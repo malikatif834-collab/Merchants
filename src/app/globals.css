@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  /* Merchants brand */
+  --brand-orange: #F26522;
+  --brand-orange-600: #D8521A;
+  --brand-orange-50: #FDEEE4;
+  --brand-charcoal: #1F1F1F;
+  --brand-charcoal-2: #2A2A2A;
+  --brand-charcoal-3: #383838;
+  --brand-ink: #0E0E0E;
+  --brand-paper: #FAFAF7;
+  --brand-line: #2F2F2F;
+  --brand-muted: #9A9A9A;
+
+  /* CleanBeyondGreen accent */
+  --brand-green: #4FA84B;
+  --brand-green-50: #E7F4E6;
+
+  --brand-amber: #E8A93B;
+  --brand-red: #D74A3A;
+
+  --background: var(--brand-ink);
+  --foreground: #F5F5F2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--brand-orange);
+  --color-brand-600: var(--brand-orange-600);
+  --color-brand-50: var(--brand-orange-50);
+  --color-charcoal: var(--brand-charcoal);
+  --color-charcoal-2: var(--brand-charcoal-2);
+  --color-charcoal-3: var(--brand-charcoal-3);
+  --color-ink: var(--brand-ink);
+  --color-paper: var(--brand-paper);
+  --color-line: var(--brand-line);
+  --color-muted: var(--brand-muted);
+  --color-green-accent: var(--brand-green);
+  --color-green-soft: var(--brand-green-50);
+  --color-amber-accent: var(--brand-amber);
+  --color-red-accent: var(--brand-red);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.brand-grid-bg {
+  background-image:
+    radial-gradient(800px 400px at 90% -10%, rgba(242, 101, 34, 0.10), transparent 60%),
+    radial-gradient(600px 400px at -10% 110%, rgba(79, 168, 75, 0.06), transparent 60%);
+}
+
+.diagonal-orange {
+  background: linear-gradient(105deg, var(--brand-orange) 0%, var(--brand-orange) 38%, transparent 38.2%);
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #444; border-radius: 8px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(242, 101, 34, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(242, 101, 34, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(242, 101, 34, 0); }
+}
+.pulse-orange { animation: pulse-ring 1.8s infinite; }
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fade-in-up 0.4s ease-out both; }
