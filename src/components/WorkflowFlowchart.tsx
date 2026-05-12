@@ -127,6 +127,30 @@ const STEPS: FlowStep[] = [
     kind: "process",
     stage: "order_placed",
   },
+  {
+    id: "shipped",
+    label: "Supplier ships · tracking captured",
+    kind: "process",
+    stage: "shipped",
+  },
+  {
+    id: "delivered",
+    label: "Delivered to customer · receipt confirmed",
+    kind: "process",
+    stage: "delivered",
+  },
+  {
+    id: "invoiced",
+    label: "Customer invoiced · terms applied",
+    kind: "process",
+    stage: "invoiced",
+  },
+  {
+    id: "paid",
+    label: "Payment received · revenue booked",
+    kind: "process",
+    stage: "paid",
+  },
 ];
 
 const STAGE_RANK: Record<DealStage, number> = {
@@ -140,8 +164,12 @@ const STAGE_RANK: Record<DealStage, number> = {
   quote_sent: 7,
   awaiting_customer: 8,
   order_placed: 9,
-  closed_won: 10,
-  closed_lost: 10,
+  shipped: 10,
+  delivered: 11,
+  invoiced: 12,
+  paid: 13,
+  closed_won: 13,
+  closed_lost: 13,
 };
 
 function statusFor(step: FlowStep, currentStage: DealStage): "done" | "current" | "future" {

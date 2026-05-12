@@ -1,41 +1,47 @@
 import Link from "next/link";
 import { Card, CardHeader, Pill } from "@/components/Card";
 import { StageBadge } from "@/components/StageBadge";
-import { Sparkbar } from "@/components/Sparkbar";
 import { AIWorkingNow } from "@/components/AIWorkingNow";
+import { LiveAIPanel } from "@/components/LiveAIPanel";
+import { SetupBanner } from "@/components/SetupBanner";
 import {
   CASE_FILES,
   KPIS,
+  PHASE_ORDER,
   PIPELINE,
-  RECENT_ACTIVITY,
-  pipelineByStage,
+  pendingApprovals,
+  pipelineByPhase,
+  recentlyClosed,
+  revenueBookedThisMonth,
 } from "@/lib/data";
-import { ageLabel, money, num, relativeTime } from "@/lib/format";
-import { STAGE_LABEL, STAGE_ORDER, type DealStage } from "@/lib/types";
+import { ageLabel, money } from "@/lib/format";
+import { PHASE_LABEL, phaseFor } from "@/lib/types";
 
-export default function Dashboard() {
-  const stageMap = pipelineByStage();
+export default function HomePage() {
+  const phases = pipelineByPhase();
+  const closed = recentlyClosed();
+  const revenue = revenueBookedThisMonth();
+  const queue = pendingApprovals();
   const atRisk = PIPELINE.filter((d) => d.atRisk);
-  const cycleTimeDelta =
-    ((KPIS.cycleTimeNow - KPIS.cycleTimeBefore) / KPIS.cycleTimeBefore) * 100;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-8">
+    <div className="mx-auto max-w-[1400px] px-6 py-7 space-y-7">
       <Hero />
+      <SetupBanner />
       <AIWorkingNow />
-      <KpiStrip cycleDelta={cycleTimeDelta} />
+      <KpiStrip revenue={revenue} />
+      <LifecycleBoard phases={phases} />
+      <LiveAIPanel compact />
 
       <div className="grid grid-cols-12 gap-6">
-        <section className="col-span-12 lg:col-span-8 space-y-6">
-          <ScenarioGallery />
-          <FunnelCard stageMap={stageMap} />
-          <PipelineTable />
+        <section className="col-span-12 lg:col-span-7 space-y-6">
+          <ApprovalQueue queue={queue} />
         </section>
 
-        <aside className="col-span-12 lg:col-span-4 space-y-6">
-          <AtRiskPanel deals={atRisk} />
-          <ActivityFeed />
-          <HumanInLoopPanel />
+        <aside className="col-span-12 lg:col-span-5 space-y-6">
+          <ActiveDeals />
+          {atRisk.length > 0 && <AtRiskPanel deals={atRisk} />}
+          <RecentlyClosed deals={closed} totalRevenue={revenue} />
         </aside>
       </div>
     </div>
@@ -52,103 +58,71 @@ function Hero() {
             "linear-gradient(105deg, transparent 0%, transparent 24%, var(--brand-orange) 24.2%, var(--brand-orange) 100%)",
         }}
       />
-      <div className="relative p-8 lg:p-10 max-w-[820px]">
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="relative p-7 lg:p-9 max-w-[820px]">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Pill tone="brand">For Carol &middot; President</Pill>
-          <Pill tone="info">Prototype &middot; live data simulated</Pill>
         </div>
-        <h1 className="text-[34px] lg:text-[42px] leading-[1.05] font-semibold text-white tracking-tight">
-          Your procurement process,
-          <br />
-          <span className="text-[var(--brand-orange)]">supervised by AI.</span>
+        <h1 className="text-[30px] lg:text-[36px] leading-[1.1] font-semibold text-white tracking-tight">
+          Your procurement, end to end.<br />
+          <span className="text-[var(--brand-orange)]">One screen. Supervised by AI.</span>
         </h1>
-        <p className="mt-4 text-[15px] text-[var(--brand-muted)] max-w-[640px]">
-          Every special order in the MWI-0703-02 workflow, watched in real time.
-          AI drafts, recommends, and flags. Your team approves. Nothing reaches
-          a customer or supplier without a human signing off.
+        <p className="mt-3 text-[14px] text-[var(--brand-muted)] max-w-[640px]">
+          Every special-order request — emails, phone calls, walk-ups, PDFs — flows through here.
+          AI reads it, drafts the reply, talks to suppliers, tracks the order through fulfillment,
+          and books the revenue. Your team approves every move. Nothing slips.
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Link
-            href="/demo"
-            className="inline-flex items-center gap-2 bg-[var(--brand-orange)] hover:bg-[var(--brand-orange-600)] text-[var(--brand-ink)] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            ▶ Run the AI live
-          </Link>
-          <Link
-            href="/case/case-001"
-            className="inline-flex items-center gap-2 border border-[var(--brand-line)] hover:bg-[var(--brand-charcoal-2)] text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            Walk through a case file →
-          </Link>
-          <Link
-            href="/about"
-            className="inline-flex items-center gap-2 text-[var(--brand-muted)] hover:text-white px-2 py-2.5 text-sm transition-colors"
-          >
-            How it works →
-          </Link>
-        </div>
       </div>
     </div>
   );
 }
 
-function KpiStrip({ cycleDelta }: { cycleDelta: number }) {
+function KpiStrip({ revenue }: { revenue: number }) {
   const items = [
     {
-      label: "Special-order cycle time",
+      label: "Revenue booked this month",
+      value: money(revenue, { compact: true }),
+      sub: `${recentlyClosed().length} deals · paid / fulfilled`,
+      tone: "ok" as const,
+    },
+    {
+      label: "Cycle time",
       value: `${KPIS.cycleTimeNow}d`,
-      sub: `was ${KPIS.cycleTimeBefore}d`,
-      delta: `${Math.round(cycleDelta)}%`,
-      good: true,
-      spark: [6.2, 5.9, 5.4, 4.6, 3.8, 2.9, 2.3, 1.8],
+      sub: `down from ${KPIS.cycleTimeBefore}d before AI`,
+      tone: "brand" as const,
     },
     {
       label: "Margin recovered (stock catches)",
       value: money(KPIS.stockRecovered, { compact: true }),
       sub: `${KPIS.stockRecoveredCount} would-be special orders this month`,
-      delta: "+$34K",
-      good: true,
-      spark: [2, 3, 4, 5, 7, 9, 11, 14],
+      tone: "ok" as const,
     },
     {
-      label: "AR exposure caught early",
+      label: "AR exposure caught",
       value: money(KPIS.arExposureCaught, { compact: true }),
-      sub: "before sales effort was spent",
-      delta: "5 deals",
-      good: true,
-      spark: [1, 2, 1, 3, 4, 3, 5, 6],
-    },
-    {
-      label: "Team hours redirected",
-      value: `${KPIS.hoursSaved}h`,
-      sub: "this week, away from data entry",
-      delta: "+31.5h",
-      good: true,
-      spark: [4, 8, 12, 16, 20, 24, 28, 31],
+      sub: "before sales spent time quoting",
+      tone: "warn" as const,
     },
   ];
-
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((k, i) => (
-        <Card key={i} className="p-5 fade-in-up">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-[var(--brand-muted)]">
-                {k.label}
-              </div>
-              <div className="mt-1 text-[28px] font-semibold text-white leading-none">
-                {k.value}
-              </div>
-              <div className="mt-1.5 text-[12px] text-[var(--brand-muted)]">{k.sub}</div>
-            </div>
-            <Sparkbar values={k.spark} />
+        <Card key={i} className="p-4 fade-in-up">
+          <div className="text-[10.5px] uppercase tracking-wider text-[var(--brand-muted)]">
+            {k.label}
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <Pill tone={k.good ? "ok" : "danger"}>
-              {k.good ? "▲" : "▼"} {k.delta}
-            </Pill>
-            <span className="text-[11px] text-[var(--brand-muted)]">vs. pre-AI baseline</span>
+          <div
+            className={`mt-1 text-[26px] font-semibold tabular-nums leading-none ${
+              k.tone === "ok"
+                ? "text-[var(--brand-green)]"
+                : k.tone === "warn"
+                  ? "text-[var(--brand-amber)]"
+                  : "text-[var(--brand-orange)]"
+            }`}
+          >
+            {k.value}
+          </div>
+          <div className="mt-1.5 text-[11.5px] text-[var(--brand-muted)]">
+            {k.sub}
           </div>
         </Card>
       ))}
@@ -156,43 +130,132 @@ function KpiStrip({ cycleDelta }: { cycleDelta: number }) {
   );
 }
 
-function ScenarioGallery() {
+function LifecycleBoard({
+  phases,
+}: {
+  phases: ReturnType<typeof pipelineByPhase>;
+}) {
   return (
     <Card>
       <CardHeader
-        title="The four AI plays, live right now"
-        subtitle="Click any to walk through the case file end-to-end"
-        right={<Pill tone="brand">{CASE_FILES.length} active</Pill>}
+        title="The whole procurement lifecycle, live"
+        subtitle="From customer ask → supplier negotiation → order placed → shipped → invoiced → paid"
+        right={<Pill tone="brand">{PIPELINE.length} deals in flight</Pill>}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
-        {CASE_FILES.map((c) => (
-          <Link
-            key={c.id}
-            href={`/case/${c.id}`}
-            className="group relative rounded-lg border border-[var(--brand-line)] hover:border-[var(--brand-orange)]/60 bg-[var(--brand-charcoal-2)] hover:bg-[var(--brand-charcoal-3)] transition-all p-4 block"
-          >
-            <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--brand-orange)] font-semibold">
-                  {c.scenarioLabel}
-                </span>
-                {c.flags?.length ? <Pill tone="warn">{c.flags[0]}</Pill> : null}
+      <div className="p-4 overflow-x-auto scrollbar-thin">
+        <div className="grid grid-cols-6 gap-2 min-w-[760px]">
+          {PHASE_ORDER.map((p, i) => {
+            const cell = phases[p];
+            const phaseDeals = PIPELINE.filter((d) => phaseFor(d.stage) === p);
+            const isRevenue = p === "revenue";
+            return (
+              <div
+                key={p}
+                className={`rounded-lg border ${
+                  isRevenue
+                    ? "border-[var(--brand-green)]/40 bg-[var(--brand-green)]/5"
+                    : "border-[var(--brand-line)] bg-[var(--brand-charcoal-2)]"
+                } p-3 flex flex-col`}
+              >
+                <div className="flex items-center justify-between gap-1 mb-2">
+                  <span className="text-[9.5px] uppercase tracking-wider text-[var(--brand-muted)] font-semibold">
+                    {i + 1}
+                  </span>
+                  {i < PHASE_ORDER.length - 1 && (
+                    <span className="text-[var(--brand-muted)]/60 text-[10px]">→</span>
+                  )}
+                </div>
+                <div
+                  className={`text-[12px] font-semibold leading-tight ${
+                    isRevenue ? "text-[var(--brand-green)]" : "text-white"
+                  }`}
+                >
+                  {PHASE_LABEL[p]}
+                </div>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-[20px] font-semibold tabular-nums text-white">
+                    {cell.count}
+                  </span>
+                  <span className="text-[10px] text-[var(--brand-muted)]">deals</span>
+                </div>
+                <div
+                  className={`text-[11px] tabular-nums mt-0.5 ${
+                    isRevenue ? "text-[var(--brand-green)]" : "text-[var(--brand-muted)]"
+                  }`}
+                >
+                  {money(cell.value, { compact: true })}
+                </div>
+                <div className="mt-2 pt-2 border-t border-[var(--brand-line)]/60 space-y-1">
+                  {phaseDeals.slice(0, 3).map((d) => (
+                    <Link
+                      key={d.id}
+                      href={`/case/${d.id}`}
+                      className="block text-[10.5px] text-[var(--brand-muted)] hover:text-white truncate"
+                      title={`${d.customer} · ${d.description}`}
+                    >
+                      · {d.customer.split(" — ")[0]}
+                    </Link>
+                  ))}
+                  {phaseDeals.length > 3 && (
+                    <div className="text-[10px] text-[var(--brand-muted)] italic">
+                      +{phaseDeals.length - 3} more
+                    </div>
+                  )}
+                </div>
               </div>
-              <StageBadge stage={c.stage} />
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ApprovalQueue({
+  queue,
+}: {
+  queue: ReturnType<typeof pendingApprovals>;
+}) {
+  return (
+    <Card>
+      <CardHeader
+        title="Waiting for your team's approval"
+        subtitle="AI did the work. People decide."
+        right={<Pill tone="brand">{queue.length} pending</Pill>}
+      />
+      <div className="divide-y divide-[var(--brand-line)]/60">
+        {queue.length === 0 && (
+          <div className="p-6 text-center text-[var(--brand-muted)] text-[13px]">
+            Nothing waiting. Inbox zero.
+          </div>
+        )}
+        {queue.map(({ rec, c }) => (
+          <Link
+            key={rec.id}
+            href={`/case/${c.id}`}
+            className="block p-4 hover:bg-[var(--brand-charcoal-2)]/60 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[11px] text-[var(--brand-orange)]">{c.procurementNo}</span>
+                <StageBadge stage={c.stage} />
+                <RecTypeBadge type={rec.type} />
+              </div>
+              <div className="text-[11.5px] text-[var(--brand-muted)]">
+                {c.customer.name.split(" — ")[0]} · {money(c.estValue, { compact: true })}
+              </div>
             </div>
-            <div className="text-[15px] font-semibold text-white leading-snug mb-1">
-              {c.title}
+            <div className="text-[13.5px] text-white font-medium leading-snug mb-0.5">
+              {rec.title}
             </div>
-            <div className="text-[12px] text-[var(--brand-muted)] mb-3 line-clamp-2">
-              {c.scenarioBlurb}
+            <div className="text-[12px] text-[var(--brand-muted)] line-clamp-1">
+              {rec.summary}
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <Stat label="Customer" value={c.customer.name.split(" — ")[0]} />
-              <Stat label="Value" value={money(c.estValue, { compact: true })} />
-              <Stat label="AI pending" value={`${c.recommendations.filter((r) => r.status === "pending").length}`} />
-            </div>
-            <div className="absolute right-3 bottom-3 text-[var(--brand-muted)] group-hover:text-[var(--brand-orange)] transition-colors">
-              →
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[11px] text-[var(--brand-muted)]">
+                AI {Math.round(rec.confidence * 100)}% confident · awaiting{" "}
+                <span className="text-white">human approval</span>
+              </span>
             </div>
           </Link>
         ))}
@@ -201,106 +264,56 @@ function ScenarioGallery() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-[var(--brand-ink)]/60 rounded-md px-2 py-1.5 border border-[var(--brand-line)]/60">
-      <div className="text-[9px] uppercase tracking-wider text-[var(--brand-muted)]">{label}</div>
-      <div className="text-[12px] text-white font-medium truncate">{value}</div>
-    </div>
-  );
+function RecTypeBadge({ type }: { type: string }) {
+  const tone =
+    type === "credit_flag" || type === "risk_summary"
+      ? "warn"
+      : type === "stock_match"
+        ? "ok"
+        : "info";
+  const labels: Record<string, string> = {
+    stock_match: "Stock match",
+    credit_flag: "AR risk",
+    supplier_suggest: "Supplier shortlist",
+    rfq_draft: "RFQ draft",
+    quote_compare: "Quote comparison",
+    quote_draft: "Quote draft",
+    follow_up: "Follow-up",
+    checklist_extract: "Checklist",
+    classification: "Classification",
+    risk_summary: "Risk brief",
+  };
+  return <Pill tone={tone as never}>{labels[type] ?? type}</Pill>;
 }
 
-function FunnelCard({
-  stageMap,
-}: {
-  stageMap: Record<string, { count: number; value: number }>;
-}) {
-  const totalValue = STAGE_ORDER.reduce(
-    (acc, s) => acc + (stageMap[s]?.value || 0),
-    0
-  );
-  const maxCount = Math.max(
-    ...STAGE_ORDER.map((s) => stageMap[s]?.count || 0),
-    1
-  );
-
+function ActiveDeals() {
   return (
     <Card>
       <CardHeader
-        title="Special-order pipeline"
-        subtitle={`${PIPELINE.length} deals in flight · ${money(totalValue)} total value`}
-        right={<Pill tone="info">Live</Pill>}
+        title="Active deals"
+        subtitle="Click any to walk through end-to-end"
       />
-      <div className="p-5 space-y-2">
-        {STAGE_ORDER.filter((s) => stageMap[s]).map((s) => {
-          const cell = stageMap[s];
-          const w = (cell.count / maxCount) * 100;
-          return (
-            <div key={s} className="flex items-center gap-4">
-              <div className="w-44 shrink-0 text-[13px] text-[var(--brand-muted)]">
-                {STAGE_LABEL[s as DealStage]}
-              </div>
-              <div className="flex-1 h-7 bg-[var(--brand-ink)] rounded-md overflow-hidden border border-[var(--brand-line)]/60 relative">
-                <div
-                  className="h-full bg-gradient-to-r from-[var(--brand-orange)]/85 to-[var(--brand-orange)]/35 transition-all"
-                  style={{ width: `${w}%` }}
-                />
-                <div className="absolute inset-0 flex items-center px-3 text-[11px] text-white/95">
-                  {cell.count} deal{cell.count !== 1 ? "s" : ""} &middot; {money(cell.value, { compact: true })}
-                </div>
-              </div>
+      <div className="divide-y divide-[var(--brand-line)]/60">
+        {CASE_FILES.map((c) => (
+          <Link
+            key={c.id}
+            href={`/case/${c.id}`}
+            className="block p-3 hover:bg-[var(--brand-charcoal-2)]/60 transition-colors"
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
+                {c.scenarioLabel}
+              </span>
+              <StageBadge stage={c.stage} />
             </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function PipelineTable() {
-  const sorted = [...PIPELINE].sort((a, b) => b.value - a.value).slice(0, 8);
-  return (
-    <Card>
-      <CardHeader
-        title="Top deals by value"
-        subtitle="Live pipeline, sorted by deal size"
-        right={
-          <Link href="/pipeline" className="text-[12px] text-[var(--brand-orange)] hover:underline">
-            See all →
+            <div className="text-[13px] text-white font-medium leading-snug">
+              {c.customer.name.split(" — ")[0]} · {money(c.estValue, { compact: true })}
+            </div>
+            <div className="text-[11.5px] text-[var(--brand-muted)] line-clamp-1">
+              {c.title}
+            </div>
           </Link>
-        }
-      />
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full text-[13px]">
-          <thead className="text-[11px] uppercase tracking-wider text-[var(--brand-muted)] border-b border-[var(--brand-line)]">
-            <tr>
-              <th className="text-left px-5 py-2 font-medium">PR #</th>
-              <th className="text-left px-2 py-2 font-medium">Customer</th>
-              <th className="text-left px-2 py-2 font-medium">Description</th>
-              <th className="text-left px-2 py-2 font-medium">Stage</th>
-              <th className="text-right px-2 py-2 font-medium">Value</th>
-              <th className="text-right px-2 py-2 font-medium">Margin</th>
-              <th className="text-right px-5 py-2 font-medium">Age</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((d) => (
-              <tr key={d.id} className="border-b border-[var(--brand-line)]/40 last:border-0 hover:bg-[var(--brand-charcoal-2)]/60">
-                <td className="px-5 py-2.5">
-                  <Link href={`/case/${d.id}`} className="font-mono text-[12px] text-[var(--brand-orange)] hover:underline">
-                    {d.procurementNo}
-                  </Link>
-                </td>
-                <td className="px-2 py-2.5 text-white">{d.customer}</td>
-                <td className="px-2 py-2.5 text-[var(--brand-muted)]">{d.description}</td>
-                <td className="px-2 py-2.5"><StageBadge stage={d.stage} /></td>
-                <td className="px-2 py-2.5 text-right text-white tabular-nums">{money(d.value)}</td>
-                <td className="px-2 py-2.5 text-right text-[var(--brand-muted)] tabular-nums">{d.marginPct.toFixed(1)}%</td>
-                <td className="px-5 py-2.5 text-right text-[var(--brand-muted)] tabular-nums">{ageLabel(d.ageHours)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        ))}
       </div>
     </Card>
   );
@@ -308,10 +321,10 @@ function PipelineTable() {
 
 function AtRiskPanel({ deals }: { deals: typeof PIPELINE }) {
   return (
-    <Card>
+    <Card className="border-[var(--brand-amber)]/30">
       <CardHeader
-        title="Deals at risk"
-        subtitle="AI is watching, awaiting your call"
+        title="At risk"
+        subtitle="AI flagged these for you"
         right={<Pill tone="warn">{deals.length}</Pill>}
       />
       <div className="divide-y divide-[var(--brand-line)]/60">
@@ -319,16 +332,13 @@ function AtRiskPanel({ deals }: { deals: typeof PIPELINE }) {
           <Link
             key={d.id}
             href={`/case/${d.id}`}
-            className="block p-4 hover:bg-[var(--brand-charcoal-2)]/60 transition-colors"
+            className="block p-3 hover:bg-[var(--brand-charcoal-2)]/60 transition-colors"
           >
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <div className="text-[13px] font-medium text-white leading-tight">{d.customer}</div>
-              <div className="text-[12px] text-white tabular-nums">{money(d.value, { compact: true })}</div>
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <span className="text-[13px] text-white font-medium">{d.customer}</span>
+              <span className="text-[11.5px] text-white tabular-nums">{money(d.value, { compact: true })}</span>
             </div>
-            <div className="text-[12px] text-[var(--brand-muted)] mb-1.5 line-clamp-1">{d.description}</div>
-            <div className="flex items-center gap-2">
-              <Pill tone="warn">⚠ {d.riskReason}</Pill>
-            </div>
+            <div className="text-[11.5px] text-[var(--brand-amber)]">⚠ {d.riskReason}</div>
           </Link>
         ))}
       </div>
@@ -336,97 +346,42 @@ function AtRiskPanel({ deals }: { deals: typeof PIPELINE }) {
   );
 }
 
-function ActivityFeed() {
+function RecentlyClosed({
+  deals,
+  totalRevenue,
+}: {
+  deals: typeof PIPELINE;
+  totalRevenue: number;
+}) {
   return (
-    <Card>
-      <CardHeader title="AI agent activity" subtitle="Last 8 hours" />
-      <ul className="divide-y divide-[var(--brand-line)]/60 max-h-[360px] overflow-auto scrollbar-thin">
-        {RECENT_ACTIVITY.map((a, i) => (
-          <li key={i} className="p-3.5 flex items-start gap-3">
-            <span
-              className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${
-                a.tone === "warn"
-                  ? "bg-[var(--brand-amber)]"
-                  : a.tone === "ok"
-                    ? "bg-[var(--brand-green)]"
-                    : "bg-[var(--brand-orange)]"
-              }`}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] text-[var(--brand-muted)] flex items-center gap-1.5">
-                <span className="text-white/80 font-medium">{a.actor}</span>
-                <span>·</span>
-                <span>{relativeTime(a.at)}</span>
+    <Card className="border-[var(--brand-green)]/30">
+      <CardHeader
+        title="Recently closed"
+        subtitle="Fulfilled + paid"
+        right={<Pill tone="ok">{money(totalRevenue, { compact: true })}</Pill>}
+      />
+      <div className="divide-y divide-[var(--brand-line)]/60">
+        {deals.map((d) => (
+          <div key={d.id} className="p-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[13px] text-white font-medium truncate">
+                {d.customer.split(" — ")[0]}
               </div>
-              <div className="text-[13px] text-white leading-snug mt-0.5">
-                {a.caseId ? (
-                  <Link href={`/case/${a.caseId}`} className="hover:text-[var(--brand-orange)]">
-                    {a.action}
-                  </Link>
-                ) : (
-                  a.action
-                )}
+              <div className="text-[11px] text-[var(--brand-muted)] truncate">
+                {d.description}
               </div>
             </div>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function HumanInLoopPanel() {
-  return (
-    <Card className="border-[var(--brand-orange)]/40">
-      <div className="p-5">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="h-2 w-2 rounded-full bg-[var(--brand-orange)] pulse-orange" />
-          <div className="text-[11px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
-            Human-in-loop
+            <div className="text-right shrink-0">
+              <div className="text-[13px] text-[var(--brand-green)] tabular-nums font-semibold">
+                {money(d.value, { compact: true })}
+              </div>
+              <div className="text-[10px] text-[var(--brand-muted)]">
+                {ageLabel(d.ageHours)} ago
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="text-[14px] text-white font-medium mb-1">
-          You are always the final approver.
-        </div>
-        <p className="text-[12px] text-[var(--brand-muted)] leading-relaxed">
-          AI extracts, drafts, scores, and recommends. Every action that touches a
-          customer or supplier waits for a green button from your team.
-        </p>
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <Mini label="Approved" value="47" tone="ok" />
-          <Mini label="Edited" value="11" tone="warn" />
-          <Mini label="Rejected" value="4" tone="danger" />
-        </div>
-        <div className="mt-3 text-[10px] text-[var(--brand-muted)]">
-          last 7 days · {num(47 + 11 + 4)} AI recommendations
-        </div>
+        ))}
       </div>
     </Card>
-  );
-}
-
-function Mini({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "ok" | "warn" | "danger";
-}) {
-  const colors = {
-    ok: "text-[var(--brand-green)]",
-    warn: "text-[var(--brand-amber)]",
-    danger: "text-[var(--brand-red)]",
-  };
-  return (
-    <div className="rounded-md bg-[var(--brand-ink)] border border-[var(--brand-line)]/60 p-2">
-      <div className={`text-[18px] font-semibold tabular-nums ${colors[tone]}`}>
-        {value}
-      </div>
-      <div className="text-[10px] uppercase tracking-wider text-[var(--brand-muted)]">
-        {label}
-      </div>
-    </div>
   );
 }

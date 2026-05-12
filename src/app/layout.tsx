@@ -59,10 +59,9 @@ function TopBar() {
           </div>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
-          <NavLink href="/">Dashboard</NavLink>
-          <NavLink href="/pipeline">Pipeline</NavLink>
-          <NavLink href="/operator">Operator</NavLink>
-          <NavLink href="/demo">Run AI live</NavLink>
+          <NavLink href="/">Home</NavLink>
+          <NavLink href="/pipeline">All deals</NavLink>
+          <NavLink href="/operator">Team queue</NavLink>
           <NavLink href="/about">How it works</NavLink>
         </nav>
         <div className="flex items-center gap-3">

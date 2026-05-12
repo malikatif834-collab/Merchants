@@ -12,6 +12,10 @@ const stageTone: Record<DealStage, "neutral" | "ok" | "warn" | "info" | "brand">
   quote_sent: "info",
   awaiting_customer: "info",
   order_placed: "ok",
+  shipped: "ok",
+  delivered: "ok",
+  invoiced: "ok",
+  paid: "ok",
   closed_won: "ok",
   closed_lost: "neutral",
 };

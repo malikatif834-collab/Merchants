@@ -9,6 +9,10 @@ export type DealStage =
   | "quote_sent"
   | "awaiting_customer"
   | "order_placed"
+  | "shipped"
+  | "delivered"
+  | "invoiced"
+  | "paid"
   | "closed_won"
   | "closed_lost";
 
@@ -23,6 +27,10 @@ export const STAGE_LABEL: Record<DealStage, string> = {
   quote_sent: "Quote sent",
   awaiting_customer: "Awaiting customer",
   order_placed: "Order placed",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  invoiced: "Invoiced",
+  paid: "Paid",
   closed_won: "Closed — won",
   closed_lost: "Closed — lost",
 };
@@ -38,7 +46,66 @@ export const STAGE_ORDER: DealStage[] = [
   "quote_sent",
   "awaiting_customer",
   "order_placed",
+  "shipped",
+  "delivered",
+  "invoiced",
+  "paid",
 ];
+
+// The simplified "Carol view" — 6 macro phases the full lifecycle collapses into.
+export type LifecyclePhase =
+  | "inbound"
+  | "qualify"
+  | "quote"
+  | "sourcing"
+  | "fulfillment"
+  | "revenue";
+
+export const PHASE_LABEL: Record<LifecyclePhase, string> = {
+  inbound: "Inbound",
+  qualify: "Qualify (AR + stock)",
+  quote: "Quote to customer",
+  sourcing: "Supplier negotiation",
+  fulfillment: "Fulfillment",
+  revenue: "Revenue booked",
+};
+
+export const PHASE_ORDER: LifecyclePhase[] = [
+  "inbound",
+  "qualify",
+  "quote",
+  "sourcing",
+  "fulfillment",
+  "revenue",
+];
+
+export function phaseFor(stage: DealStage): LifecyclePhase {
+  switch (stage) {
+    case "inquiry_received":
+    case "stock_check":
+    case "checklist":
+      return "inbound";
+    case "ar_review":
+    case "purchasing_review":
+      return "qualify";
+    case "sourcing":
+      return "sourcing";
+    case "quote_drafted":
+    case "quote_sent":
+    case "awaiting_customer":
+      return "quote";
+    case "order_placed":
+    case "shipped":
+    case "delivered":
+      return "fulfillment";
+    case "invoiced":
+    case "paid":
+    case "closed_won":
+      return "revenue";
+    case "closed_lost":
+      return "revenue";
+  }
+}
 
 export type CustomerType =
   | "hospitality"

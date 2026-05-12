@@ -2,10 +2,14 @@ import type {
   CaseFile,
   Customer,
   KPIs,
+  LifecyclePhase,
   PipelineDeal,
   Product,
   Supplier,
 } from "./types";
+import { PHASE_ORDER, phaseFor } from "./types";
+
+export { PHASE_ORDER };
 
 export const CUSTOMERS: Customer[] = [
   {
@@ -341,6 +345,79 @@ export const PIPELINE: PipelineDeal[] = [
     value: 8_900,
     marginPct: 18.0,
     ageHours: 1,
+  },
+  // ----- fulfillment + revenue stages (closed lifecycle deals) -----
+  {
+    id: "p-011",
+    procurementNo: "PR-24108",
+    customer: "Hiram Walker — Facilities",
+    customerType: "manufacturing",
+    rep: "Marco Ruiz",
+    description: "Industrial degreaser drum (recurring)",
+    stage: "shipped",
+    value: 11_400,
+    marginPct: 25.6,
+    ageHours: 72,
+  },
+  {
+    id: "p-012",
+    procurementNo: "PR-24102",
+    customer: "Windsor Assembly — Janitorial",
+    customerType: "automotive",
+    rep: "Sarah Pham",
+    description: "PPE bulk Q2 fill",
+    stage: "delivered",
+    value: 38_200,
+    marginPct: 23.4,
+    ageHours: 96,
+  },
+  {
+    id: "p-013",
+    procurementNo: "PR-24095",
+    customer: "St. Clair College — Facilities",
+    customerType: "education",
+    rep: "Sarah Pham",
+    description: "Branded napkin run, student union",
+    stage: "invoiced",
+    value: 6_800,
+    marginPct: 31.5,
+    ageHours: 168,
+  },
+  {
+    id: "p-014",
+    procurementNo: "PR-24088",
+    customer: "Caesars Windsor — F&B",
+    customerType: "hospitality",
+    rep: "Sarah Pham",
+    description: "Compostable food trays — custom print",
+    stage: "paid",
+    value: 22_700,
+    marginPct: 20.9,
+    ageHours: 240,
+  },
+  {
+    id: "p-015",
+    procurementNo: "PR-24081",
+    customer: "Erie Shores Healthcare",
+    customerType: "healthcare",
+    rep: "Marco Ruiz",
+    description: "Oxivir Plus — Q1 6-month supply",
+    stage: "paid",
+    value: 18_400,
+    marginPct: 24.6,
+    ageHours: 312,
+  },
+  {
+    id: "p-016",
+    procurementNo: "PR-24076",
+    customer: "Hiram Walker — Facilities",
+    customerType: "manufacturing",
+    rep: "Dan Friesen",
+    description: "Specialty wipes contract",
+    stage: "paid",
+    value: 9_400,
+    marginPct: 28.2,
+    ageHours: 432,
   },
 ];
 
@@ -927,4 +1004,40 @@ export function pipelineByStage() {
     counts[d.stage].value += d.value;
   }
   return counts;
+}
+
+// Phase counts and value for the simplified lifecycle board on the home page.
+export function pipelineByPhase() {
+  const counts: Record<LifecyclePhase, { count: number; value: number }> = {
+    inbound: { count: 0, value: 0 },
+    qualify: { count: 0, value: 0 },
+    quote: { count: 0, value: 0 },
+    sourcing: { count: 0, value: 0 },
+    fulfillment: { count: 0, value: 0 },
+    revenue: { count: 0, value: 0 },
+  };
+  for (const d of PIPELINE) {
+    const p = phaseFor(d.stage);
+    counts[p].count += 1;
+    counts[p].value += d.value;
+  }
+  return counts;
+}
+
+export function recentlyClosed() {
+  return PIPELINE.filter(
+    (d) => d.stage === "paid" || d.stage === "closed_won"
+  ).sort((a, b) => b.value - a.value);
+}
+
+export function revenueBookedThisMonth() {
+  return recentlyClosed().reduce((sum, d) => sum + d.value, 0);
+}
+
+export function pendingApprovals() {
+  return CASE_FILES.flatMap((c) =>
+    c.recommendations
+      .filter((r) => r.status === "pending")
+      .map((r) => ({ rec: r, c }))
+  );
 }
