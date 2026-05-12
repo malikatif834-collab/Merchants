@@ -493,6 +493,17 @@ Merchants Paper — the friendly supply house. since 1941.`,
       { at: t(-78), actor: "AI Agent", action: "Value-grade alternative identified (NIT-BL-LG-ECO)", icon: "ai" },
       { at: t(-15), actor: "AI Agent", action: "Customer reply drafted, awaiting human approval", detail: "Margin held at 27.4%", icon: "ai" },
     ],
+    dataCaptured: [
+      { field: "Customer", value: "Caesars Windsor — F&B", source: "Customer Master", confidence: 1.0 },
+      { field: "Contact", value: "Mireille Lacasse", source: "Gmail" },
+      { field: "Product", value: "Nitrile gloves, powder-free, blue, large", source: "Gmail", confidence: 0.96 },
+      { field: "Quantity", value: "200 cases", source: "Gmail", confidence: 0.99 },
+      { field: "Urgency", value: "High (by Friday)", source: "AI Inference", confidence: 0.93 },
+      { field: "Stock match", value: "NIT-BL-LG-100 · 312 on hand", source: "Catalog DB", confidence: 0.97 },
+      { field: "Alternative SKU", value: "NIT-BL-LG-ECO · 188 on hand", source: "Catalog DB", confidence: 0.91 },
+      { field: "Last 6 orders SKU", value: "NIT-BL-LG-100 (premium)", source: "Prior Quotes", confidence: 0.99 },
+      { field: "Credit rating", value: "A", source: "AR Ledger" },
+    ],
   },
 
   // -----------------------------------------------------------
@@ -508,21 +519,24 @@ Merchants Paper — the friendly supply house. since 1941.`,
     title: "$45K chemicals order — AR risk surfaced before quoting",
     customer: CUSTOMERS[3],
     inbound: {
-      channel: "email",
-      from: "Rick Bonduriansky <rick@lakeshorehg.example>",
-      subject: "Quarterly chemicals order — please quote",
-      body: `Dan — time for our quarterly cleaning chemicals fill across the three properties.
-
-Same list as last quarter, roughly. Need:
-- Diversey Oxivir Plus — 24 cases
-- Floor stripper concentrate — 12 drums
-- Glass cleaner concentrate — 18 cases
-- Laundry detergent commercial — 30 jugs
-- Misc dispensers and refills
-
-Should land around $45K give or take. Can you turn around a quote this week?
-
-Rick`,
+      channel: "portal",
+      formName: "merchants.ca · Quote Request",
+      submittedBy: "Rick Bonduriansky (Lakeshore Hospitality Group)",
+      submittedAt: t(-300),
+      formFields: [
+        { label: "Customer account", value: "Lakeshore Hospitality Group — LHG-0042" },
+        { label: "Submitted by", value: "Rick Bonduriansky · rick@lakeshorehg.example" },
+        { label: "Request type", value: "Recurring quarterly fill" },
+        { label: "Properties", value: "3 (Kingsville, Leamington, Pelee)" },
+        { label: "Line 1", value: "Diversey Oxivir Plus — 24 cases" },
+        { label: "Line 2", value: "Floor stripper concentrate — 12 drums" },
+        { label: "Line 3", value: "Glass cleaner concentrate — 18 cases" },
+        { label: "Line 4", value: "Laundry detergent commercial — 30 jugs" },
+        { label: "Line 5", value: "Misc dispensers and refills" },
+        { label: "Target value", value: "~$45,000 CAD" },
+        { label: "Needed by", value: "End of next week" },
+      ],
+      notes: "Same list as last quarter, roughly.",
       receivedAt: t(-300),
     },
     request: {
@@ -597,12 +611,24 @@ Rick`,
       },
     ],
     auditLog: [
-      { at: t(-300), actor: "Customer", action: "Inbound email received", detail: "Subject: Quarterly chemicals order — please quote", icon: "email" },
-      { at: t(-298), actor: "AI Agent", action: "Multi-line checklist extracted (91% confidence)", icon: "ai" },
+      { at: t(-300), actor: "Customer", action: "Portal form submitted", detail: "merchants.ca · Quote Request · 5 line items", icon: "email" },
+      { at: t(-298), actor: "AI Agent", action: "Form parsed; multi-line checklist extracted (91% confidence)", icon: "ai" },
       { at: t(-290), actor: "Sales Assistant", action: "Checklist approved", icon: "approve" },
       { at: t(-285), actor: "AI Agent", action: "Routed to AR for credit review", detail: "Threshold: $10K+ to AR auto-route", icon: "system" },
       { at: t(-275), actor: "AI Agent", action: "AR risk analysis completed", detail: "90+ day balance + NSF pattern detected", icon: "ai" },
       { at: t(-30), actor: "AI Agent", action: "One-page brief drafted for Director of Sales", icon: "ai" },
+    ],
+    dataCaptured: [
+      { field: "Customer", value: "Lakeshore Hospitality Group", source: "Customer Master", confidence: 1.0 },
+      { field: "Submitted by", value: "Rick Bonduriansky", source: "Customer Portal" },
+      { field: "Line items", value: "5 (mixed chemicals + dispensers)", source: "Customer Portal", confidence: 0.99 },
+      { field: "Target value", value: "~$45,000 CAD", source: "Customer Portal" },
+      { field: "Total AR", value: "$41,300", source: "AR Ledger" },
+      { field: "90+ day balance", value: "$14,800", source: "AR Ledger", confidence: 1.0 },
+      { field: "NSFs / 90d", value: "2 returns", source: "AR Ledger", confidence: 1.0 },
+      { field: "YoY revenue trend", value: "-23%", source: "AR Ledger" },
+      { field: "Pattern match", value: "Same SKUs as Q4 2025 invoice", source: "Prior Quotes", confidence: 0.94 },
+      { field: "Recommended action", value: "Hold or revise terms", source: "AI Inference", confidence: 0.94 },
     ],
   },
 
@@ -619,17 +645,17 @@ Rick`,
     title: "Custom-embossed CleanBeyondGreen — 3 suppliers, one comparable table",
     customer: CUSTOMERS[6],
     inbound: {
-      channel: "email",
-      from: "Jenna Albuquerque <jenna@riverbendsuites.example>",
-      subject: "Logo-embossed paper towels — eco line",
-      body: `Hi Sarah,
-
-We're upgrading our amenities and want to go to a logo-embossed roll towel in our CleanBeyondGreen eco-line — natural color, our Riverbend mark embossed once per linear foot. Hardwound, around 800ft per roll, 6 rolls per case. We'd need 240 cases for the initial run, then a quarterly recurring after that if it goes well.
-
-What are we looking at for cost and lead time?
-
-Jenna
-Riverbend Suites & Conference`,
+      channel: "phone",
+      from: "Jenna Albuquerque · Riverbend Suites & Conference",
+      durationSeconds: 92,
+      capturedBy: "Sarah Pham (voicemail · transcribed by AI)",
+      transcript: [
+        { speaker: "vm", text: "Voicemail received Friday 4:42 PM. Caller ID: Jenna Albuquerque, Riverbend Suites." },
+        { speaker: "customer", text: "Hey Sarah, it's Jenna over at Riverbend. So we're upgrading our amenities and want to go to a logo-embossed roll towel for the guest rooms and conference areas." },
+        { speaker: "customer", text: "We'd want to do this in your CleanBeyondGreen eco-line — the natural color one — with our Riverbend mark embossed, you know, once per foot or so." },
+        { speaker: "customer", text: "Hardwound, around 800 feet per roll, six rolls per case I think is what your spec sheet had. We'd need 240 cases for the initial rollout." },
+        { speaker: "customer", text: "And then if it goes well, we'd probably want to do a quarterly recurring after that. So can you put together a number for us? Cost and lead time both. Call me back when you can. Thanks!" },
+      ],
       receivedAt: tDays(2),
     },
     request: {
@@ -722,8 +748,8 @@ Riverbend Suites & Conference`,
       },
     ],
     auditLog: [
-      { at: tDays(2), actor: "Customer", action: "Inbound email received", icon: "email" },
-      { at: tDays(2), actor: "AI Agent", action: "Checklist extracted, stock match attempted (no match found)", icon: "ai" },
+      { at: tDays(2), actor: "Customer", action: "Voicemail received and transcribed", detail: "92s voicemail, customer-initiated", icon: "email" },
+      { at: tDays(2), actor: "AI Agent", action: "Transcript parsed; checklist extracted; stock match attempted (no match)", icon: "ai" },
       { at: tDays(2), actor: "AI Agent", action: "Special order opened, routed to Purchasing", icon: "system" },
       { at: tDays(2), actor: "AI Agent", action: "3 candidate suppliers shortlisted", icon: "ai" },
       { at: tDays(2), actor: "Purchasing", action: "Supplier shortlist approved", icon: "approve" },
@@ -733,6 +759,18 @@ Riverbend Suites & Conference`,
       { at: tDays(0.8), actor: "Kruger", action: "Quote received and parsed", icon: "email" },
       { at: tDays(0.5), actor: "Atlas", action: "Quote received and parsed", icon: "email" },
       { at: t(-180), actor: "AI Agent", action: "Comparison table built, customer quote drafted", icon: "ai" },
+    ],
+    dataCaptured: [
+      { field: "Customer", value: "Riverbend Suites & Conference", source: "Customer Master", confidence: 1.0 },
+      { field: "Contact", value: "Jenna Albuquerque", source: "Phone Notes" },
+      { field: "Channel", value: "Voicemail (92s)", source: "Phone Notes", confidence: 1.0 },
+      { field: "Product spec", value: "CBG hardwound 800ft, 6/case, embossed", source: "Phone Notes", confidence: 0.92 },
+      { field: "Quantity", value: "240 cases initial + quarterly recurring", source: "Phone Notes", confidence: 0.96 },
+      { field: "Stock match", value: "None (custom embossing)", source: "Catalog DB", confidence: 0.99 },
+      { field: "Candidate suppliers", value: "Cascades, Kruger, Atlas", source: "Supplier History", confidence: 0.94 },
+      { field: "Plate availability — Atlas", value: "On file (prior job)", source: "Supplier History" },
+      { field: "Diversey lead time", value: "11–18d range across suppliers", source: "Supplier History" },
+      { field: "Estimated margin", value: "22.8% baseline / 24.6% recurring", source: "AI Inference", confidence: 0.86 },
     ],
   },
 
@@ -749,15 +787,16 @@ Riverbend Suites & Conference`,
     title: "Diversey Oxivir quote silent for 14 days — rescue plan ready",
     customer: CUSTOMERS[2],
     inbound: {
-      channel: "email",
-      from: "Tanya Mukherjee <tmukherjee@erieshores.example>",
-      subject: "Oxivir 6-month supply — quote request",
-      body: `Hi Marco,
-
-We're planning ahead for the next six months on Oxivir Plus disinfectant. Last fall we did this with you — same volume, similar cadence. Can you put a quote together?
-
-Tanya
-Erie Shores Healthcare`,
+      channel: "walkup",
+      capturedBy: "Marco Ruiz (in person at Erie Shores)",
+      location: "Erie Shores Healthcare — Materials office, Leamington",
+      rawNote: `Tanya - planning next 6mo
+Oxivir Plus same as fall '25
+~120 cs / qtr cadence
+budget cycle approves end of month
+quote this week pls`,
+      aiTranscription:
+        "Tanya Mukherjee (Materials Manager, Erie Shores Healthcare) is planning the next 6-month supply of Diversey Oxivir Plus disinfectant. She referenced the prior fall 2025 order — same cadence, approximately 120 cases per quarter. Budget cycle approval lands end of this month. She has asked for a quote within the week.",
       receivedAt: tDays(15),
     },
     request: {
@@ -833,14 +872,26 @@ Merchants Paper`,
       },
     ],
     auditLog: [
-      { at: tDays(15), actor: "Customer", action: "Inbound quote request received", icon: "email" },
-      { at: tDays(15), actor: "AI Agent", action: "Checklist extracted, routed to sourcing", icon: "ai" },
+      { at: tDays(15), actor: "Marco Ruiz", action: "Captured walk-up note at Erie Shores", detail: "Photo of notepad uploaded from phone", icon: "human" },
+      { at: tDays(15), actor: "AI Agent", action: "Note transcribed; checklist extracted; routed to sourcing", icon: "ai" },
       { at: tDays(14.5), actor: "Purchasing", action: "Pricing confirmed with Diversey", icon: "approve" },
       { at: tDays(14), actor: "Marco Ruiz", action: "Quote sent to Tanya", icon: "human" },
       { at: tDays(7), actor: "AI Agent", action: "First check-in (no response): no action taken — within normal pause", icon: "ai" },
       { at: tDays(2), actor: "AI Agent", action: "Stall detected (14d silent). Flagged to dashboard.", icon: "ai" },
       { at: tDays(0.5), actor: "AI Agent", action: "Diversey supplier lead time increase detected (5d → 21d)", icon: "ai" },
       { at: t(-60), actor: "AI Agent", action: "Follow-up + alternative drafted, awaiting human approval", icon: "ai" },
+    ],
+    dataCaptured: [
+      { field: "Customer", value: "Erie Shores Healthcare", source: "Customer Master", confidence: 1.0 },
+      { field: "Contact", value: "Tanya Mukherjee", source: "Walk-up Capture" },
+      { field: "Channel", value: "In-person walk-up (Leamington)", source: "Walk-up Capture", confidence: 1.0 },
+      { field: "Product", value: "Diversey Oxivir Plus", source: "Walk-up Capture", confidence: 0.96 },
+      { field: "Quantity", value: "~120 cases / quarter", source: "Walk-up Capture", confidence: 0.92 },
+      { field: "Prior pattern", value: "6 of last 6 half-year cycles", source: "Prior Quotes", confidence: 0.99 },
+      { field: "Budget cycle", value: "Approves end of month", source: "Walk-up Capture", confidence: 0.88 },
+      { field: "Quote status", value: "Sent 14d ago · silent", source: "Procurement Tool", confidence: 1.0 },
+      { field: "Supplier lead time", value: "Up from 5d → 21d (Friday)", source: "Supplier History", confidence: 1.0 },
+      { field: "Alternative SKU", value: "Oxivir Tb (faster availability)", source: "AI Inference", confidence: 0.83 },
     ],
   },
 ];

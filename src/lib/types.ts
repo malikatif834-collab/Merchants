@@ -128,6 +128,70 @@ export type ScenarioKey =
   | "complex_sourcing"
   | "stalled_rescue";
 
+export type InboundChannel = "email" | "phone" | "portal" | "walkup";
+
+export interface EmailInbound {
+  channel: "email";
+  from: string;
+  subject: string;
+  body: string;
+  receivedAt: string;
+}
+
+export interface PortalInbound {
+  channel: "portal";
+  formName: string;
+  submittedBy: string;
+  submittedAt: string;
+  formFields: Array<{ label: string; value: string }>;
+  notes?: string;
+  receivedAt: string;
+}
+
+export interface PhoneInbound {
+  channel: "phone";
+  from: string;
+  durationSeconds: number;
+  transcript: Array<{ speaker: "customer" | "rep" | "vm"; text: string }>;
+  capturedBy: string;
+  receivedAt: string;
+}
+
+export interface WalkupInbound {
+  channel: "walkup";
+  capturedBy: string;
+  location: string;
+  rawNote: string;
+  aiTranscription: string;
+  receivedAt: string;
+}
+
+export type Inbound =
+  | EmailInbound
+  | PortalInbound
+  | PhoneInbound
+  | WalkupInbound;
+
+export type DataSource =
+  | "Gmail"
+  | "Customer Portal"
+  | "Phone Notes"
+  | "Walk-up Capture"
+  | "Catalog DB"
+  | "AR Ledger"
+  | "Supplier History"
+  | "Procurement Tool"
+  | "Customer Master"
+  | "Prior Quotes"
+  | "AI Inference";
+
+export interface DataPoint {
+  field: string;
+  value: string;
+  source: DataSource;
+  confidence?: number;
+}
+
 export interface CaseFile {
   id: string;
   procurementNo: string;
@@ -136,13 +200,7 @@ export interface CaseFile {
   scenarioBlurb: string;
   title: string;
   customer: Customer;
-  inbound: {
-    channel: "email" | "phone" | "portal";
-    from: string;
-    subject: string;
-    body: string;
-    receivedAt: string;
-  };
+  inbound: Inbound;
   request: {
     description: string;
     quantity: number;
@@ -157,6 +215,7 @@ export interface CaseFile {
   estMarginPct: number;
   recommendations: AIRecommendation[];
   auditLog: AuditEntry[];
+  dataCaptured: DataPoint[];
   openedAt: string;
   lastActivity: string;
   flags?: string[];

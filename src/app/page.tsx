@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardHeader, Pill } from "@/components/Card";
 import { StageBadge } from "@/components/StageBadge";
 import { Sparkbar } from "@/components/Sparkbar";
+import { AIWorkingNow } from "@/components/AIWorkingNow";
 import {
   CASE_FILES,
   KPIS,
@@ -21,6 +22,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-8">
       <Hero />
+      <AIWorkingNow />
       <KpiStrip cycleDelta={cycleTimeDelta} />
 
       <div className="grid grid-cols-12 gap-6">
@@ -67,16 +69,16 @@ function Hero() {
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
-            href="/case/case-001"
+            href="/demo"
             className="inline-flex items-center gap-2 bg-[var(--brand-orange)] hover:bg-[var(--brand-orange-600)] text-[var(--brand-ink)] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
-            Walk through a live case file →
+            ▶ Run the AI live
           </Link>
           <Link
-            href="/pipeline"
+            href="/case/case-001"
             className="inline-flex items-center gap-2 border border-[var(--brand-line)] hover:bg-[var(--brand-charcoal-2)] text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
-            See the pipeline
+            Walk through a case file →
           </Link>
           <Link
             href="/about"

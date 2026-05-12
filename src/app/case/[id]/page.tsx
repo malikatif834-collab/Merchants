@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardHeader, Pill } from "@/components/Card";
 import { StageBadge } from "@/components/StageBadge";
-import { WorkflowTrack } from "@/components/WorkflowTrack";
+import { WorkflowFlowchart } from "@/components/WorkflowFlowchart";
 import { RecommendationCard } from "@/components/RecommendationCard";
+import { InboundCard } from "@/components/InboundCard";
+import { DataCapturedPanel } from "@/components/DataCapturedPanel";
 import { CASE_FILES, getCase } from "@/lib/data";
 import { money, relativeTime } from "@/lib/format";
 
@@ -40,17 +42,20 @@ export default async function CaseFilePage({
 
       <div className="grid grid-cols-12 gap-6">
         <section className="col-span-12 lg:col-span-8 space-y-6">
-          <InboundCard c={c} />
+          <InboundCard inbound={c.inbound} customer={c.customer} />
+          <TryLiveAIPrompt />
           <RecommendationsStack c={c} />
         </section>
 
         <aside className="col-span-12 lg:col-span-4 space-y-6">
           <Card>
-            <CardHeader title="Workflow progress" subtitle="Per MWI-0703-02" />
-            <div className="p-5">
-              <WorkflowTrack stage={c.stage} />
+            <CardHeader title="Workflow progress" subtitle="MWI-0703-02 · current step highlighted" />
+            <div className="p-4">
+              <WorkflowFlowchart currentStage={c.stage} />
             </div>
           </Card>
+
+          <DataCapturedPanel data={c.dataCaptured} />
 
           <Card>
             <CardHeader
@@ -152,23 +157,25 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function InboundCard({ c }: { c: ReturnType<typeof getCase> & object }) {
+function TryLiveAIPrompt() {
   return (
-    <Card>
-      <CardHeader
-        title="What started this"
-        subtitle={`Inbound ${c.inbound.channel} from ${c.customer.name}`}
-        right={<Pill tone="info">{relativeTime(c.inbound.receivedAt)}</Pill>}
-      />
-      <div className="p-5">
-        <div className="text-[11px] text-[var(--brand-muted)] mb-1">From</div>
-        <div className="text-[13.5px] text-white font-medium">{c.inbound.from}</div>
-        <div className="text-[11px] text-[var(--brand-muted)] mt-3 mb-1">Subject</div>
-        <div className="text-[13.5px] text-white">{c.inbound.subject}</div>
-        <div className="text-[11px] text-[var(--brand-muted)] mt-3 mb-1">Body</div>
-        <pre className="bg-[var(--brand-ink)] border border-[var(--brand-line)]/60 rounded-md p-3 text-[13px] text-white/90 whitespace-pre-wrap font-sans leading-relaxed">
-{c.inbound.body}
-        </pre>
+    <Card className="border-[var(--brand-orange)]/30 bg-[var(--brand-orange)]/5">
+      <div className="p-4 flex items-center gap-3 flex-wrap">
+        <span className="h-2 w-2 rounded-full bg-[var(--brand-orange)] pulse-orange shrink-0" />
+        <div className="flex-1 min-w-[200px]">
+          <div className="text-[13px] text-white font-medium">
+            Want to see the model do this work live?
+          </div>
+          <div className="text-[11.5px] text-[var(--brand-muted)] mt-0.5">
+            Open the Run AI panel — pick this inbound (or paste another), watch it classify, extract, and draft in real time.
+          </div>
+        </div>
+        <Link
+          href="/demo"
+          className="inline-flex items-center gap-1.5 bg-[var(--brand-orange)] hover:bg-[var(--brand-orange-600)] text-[var(--brand-ink)] font-semibold px-3.5 py-2 rounded-md text-[12.5px] transition-colors shrink-0"
+        >
+          ▶ Run AI live
+        </Link>
       </div>
     </Card>
   );

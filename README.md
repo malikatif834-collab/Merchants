@@ -30,7 +30,20 @@ Open <http://localhost:3000>.
 
 ## Deploy
 
-Push to GitHub, then on [vercel.com/new](https://vercel.com/new) import the repo. Zero config — Vercel auto-detects Next.js.
+Push to GitHub, then on [vercel.com/new](https://vercel.com/new) import the repo. Vercel auto-detects Next.js — no build config needed.
+
+### Activate the live AI demo
+
+The `/demo` page calls `claude-opus-4-7` through the Anthropic API to process arbitrary inbound text end-to-end. To activate it:
+
+1. Get an API key from [console.anthropic.com](https://console.anthropic.com) (~$5 free credit, takes a minute)
+2. In your Vercel project → **Settings → Environment Variables**, add:
+   - **Name**: `ANTHROPIC_API_KEY`
+   - **Value**: the key from step 1
+   - **Environments**: Production, Preview, Development
+3. Redeploy from the Deployments tab (1 click)
+
+Without the key, the rest of the prototype still works — only the live-AI panel falls back to a friendly "set the key in Vercel" message.
 
 ## Stack
 

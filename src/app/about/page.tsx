@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, CardHeader, Pill } from "@/components/Card";
+import { SystemDiagram } from "@/components/SystemDiagram";
 
 export default function AboutPage() {
   return (
@@ -17,6 +18,8 @@ export default function AboutPage() {
           versus what AI prepares for their approval.
         </p>
       </div>
+
+      <SystemDiagram />
 
       <Card>
         <CardHeader title="The principle" subtitle="Recommend → approve → execute" />
