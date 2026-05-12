@@ -163,26 +163,58 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
     setStatus("idle");
   };
 
+  const [pdfReading, setPdfReading] = useState(false);
+
   const onPdfPick = async (file: File | null) => {
-    if (!file) return;
-    if (file.type !== "application/pdf") {
-      setError("Only PDF files are supported.");
+    if (!file) {
+      console.log("[PdfUploader] no file received");
+      return;
+    }
+    console.log("[PdfUploader] file selected", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+    // Some browsers report PDF type as application/x-pdf or empty; also accept by extension
+    const looksLikePdf =
+      file.type === "application/pdf" ||
+      file.type === "application/x-pdf" ||
+      file.type === "" ||
+      file.name.toLowerCase().endsWith(".pdf");
+    if (!looksLikePdf) {
+      setError(
+        `That file looks like ${file.type || "an unknown type"}. Please pick a .pdf file.`
+      );
       return;
     }
     if (file.size > 3_000_000) {
       setError(
-        `PDF is ${(file.size / 1_000_000).toFixed(1)} MB — maximum 3 MB for the live demo.`
+        `PDF is ${(file.size / 1_000_000).toFixed(1)} MB — maximum 3 MB for the live demo. Try a smaller file.`
       );
       return;
     }
     setError(null);
-    const buf = await file.arrayBuffer();
-    const base64 = arrayBufferToBase64(buf);
-    setPdfBase64(base64);
-    setPdfName(file.name);
-    setPdfSizeKB(Math.round(file.size / 1024));
-    setRaw("");
-    setStatus("idle");
+    setPdfReading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const base64 = arrayBufferToBase64(buf);
+      setPdfBase64(base64);
+      setPdfName(file.name);
+      setPdfSizeKB(Math.round(file.size / 1024));
+      setRaw("");
+      setStatus("idle");
+      console.log("[PdfUploader] PDF ready", {
+        name: file.name,
+        base64Length: base64.length,
+      });
+    } catch (err) {
+      console.error("[PdfUploader] failed to read file", err);
+      setError(
+        `Could not read that PDF: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setPdfReading(false);
+    }
   };
 
   const clearPdf = () => {
@@ -355,6 +387,7 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
           onClear={clearPdf}
           fileInputRef={fileInputRef}
           disabled={busy}
+          reading={pdfReading}
         />
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -394,6 +427,13 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
 
         {(status === "streaming" || status === "done") && (
           <SectionsRender sections={sections} streaming={status === "streaming"} />
+        )}
+
+        {status === "done" && (
+          <WhatHappensNext
+            sections={sections}
+            pdfDirection={pdfBase64 ? pdfDirection : null}
+          />
         )}
       </div>
     </Card>
@@ -483,6 +523,7 @@ function PdfUploader({
   onClear,
   fileInputRef,
   disabled,
+  reading,
 }: {
   pdfName: string;
   pdfSizeKB: number;
@@ -492,17 +533,38 @@ function PdfUploader({
   onClear: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   disabled: boolean;
+  reading: boolean;
 }) {
   const has = !!pdfName;
+  const [dragOver, setDragOver] = useState(false);
+
+  const openPicker = () => {
+    if (disabled || reading) return;
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className="rounded-md border border-dashed border-[var(--brand-line)] bg-[var(--brand-ink)]/40 p-3">
+    <div
+      className={`rounded-md border-2 border-dashed ${dragOver ? "border-[var(--brand-orange)] bg-[var(--brand-orange)]/8" : "border-[var(--brand-line)] bg-[var(--brand-ink)]/40"} p-3 transition-colors`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!disabled && !reading) setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) onPick(f);
+      }}
+    >
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
             ▤ Attach a PDF (optional)
           </span>
           <span className="text-[11px] text-[var(--brand-muted)]">
-            Customer RFQ, PO, spec sheet — or a supplier&apos;s returned quote
+            Customer RFQ / PO — or a supplier&apos;s returned quote
           </span>
         </div>
         <div className="inline-flex rounded-md border border-[var(--brand-line)] bg-[var(--brand-charcoal)] p-0.5">
@@ -532,6 +594,21 @@ function PdfUploader({
           </button>
         </div>
       </div>
+
+      {/* Hidden file input — kept out of the layout, triggered by the button below */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0] ?? null;
+          onPick(f);
+          // Reset so re-selecting the same file fires onChange again
+          if (e.target) e.target.value = "";
+        }}
+      />
+
       {has ? (
         <div className="flex items-center gap-3 bg-[var(--brand-charcoal-2)] border border-[var(--brand-line)]/60 rounded-md p-2.5">
           <div className="h-8 w-8 rounded-md bg-[var(--brand-red)]/20 text-[var(--brand-red)] flex items-center justify-center text-[11px] font-bold shrink-0">
@@ -545,7 +622,10 @@ function PdfUploader({
           </div>
           <button
             type="button"
-            onClick={onClear}
+            onClick={() => {
+              if (fileInputRef.current) fileInputRef.current.value = "";
+              onClear();
+            }}
             disabled={disabled}
             className="text-[11px] text-[var(--brand-muted)] hover:text-[var(--brand-red)]"
           >
@@ -553,19 +633,21 @@ function PdfUploader({
           </button>
         </div>
       ) : (
-        <label
-          className={`flex items-center justify-center gap-2 rounded-md border border-[var(--brand-line)]/60 bg-[var(--brand-charcoal-2)]/60 hover:bg-[var(--brand-charcoal-2)] cursor-pointer text-[12px] text-[var(--brand-muted)] py-3 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        <button
+          type="button"
+          onClick={openPicker}
+          disabled={disabled || reading}
+          className={`w-full flex items-center justify-center gap-2 rounded-md border border-[var(--brand-line)]/60 bg-[var(--brand-charcoal-2)]/60 hover:bg-[var(--brand-charcoal-2)] hover:border-[var(--brand-orange)]/60 cursor-pointer text-[13px] text-white/85 py-4 transition-colors ${disabled || reading ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            disabled={disabled}
-            className="sr-only"
-            onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-          />
-          📎 Choose a PDF (max 3 MB)
-        </label>
+          {reading ? (
+            <>
+              <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--brand-orange)] border-t-transparent animate-spin" />
+              Reading PDF…
+            </>
+          ) : (
+            <>📎 Click to choose a PDF — or drag &amp; drop it here (max 3 MB)</>
+          )}
+        </button>
       )}
     </div>
   );
@@ -838,6 +920,126 @@ function parseSections(raw: string): Record<string, string> {
     out[current.key] = body;
   }
   return out;
+}
+
+function WhatHappensNext({
+  sections,
+  pdfDirection,
+}: {
+  sections: Record<string, string>;
+  pdfDirection: PdfDirection | null;
+}) {
+  // Parse a few key values out of the AI output for the routing summary.
+  const get = (sec: string, key: string): string => {
+    const body = sections[sec];
+    if (!body) return "—";
+    const m = new RegExp(`^[-•]\\s*${key}\\s*:\\s*(.+)$`, "im").exec(body);
+    return m ? m[1].trim() : "—";
+  };
+
+  const customer = get("CLASSIFY", "Customer match");
+  const intent = get("CLASSIFY", "Intent");
+  const urgency = get("CLASSIFY", "Urgency");
+  const stockMatch = get("STOCK_CHECK", "Match found");
+  const risk = get("AR_RISK", "Risk level");
+  const owner = get("RECOMMENDATION", "Human approval needed from");
+
+  const isSupplier = pdfDirection === "supplier";
+  const isStockMatch = /yes/i.test(stockMatch);
+  const isHighRisk = /high|critical/i.test(risk);
+
+  let landingStage = "Inquiry Received";
+  let phaseHint = "Inbound";
+  if (isSupplier) {
+    landingStage = "Sourcing";
+    phaseHint = "Supplier negotiation";
+  } else if (isStockMatch) {
+    landingStage = "Stock Check → Quote Drafted (no special order needed)";
+    phaseHint = "Quote";
+  } else if (isHighRisk) {
+    landingStage = "AR Review";
+    phaseHint = "Qualify";
+  } else {
+    landingStage = "Stock Check / Checklist";
+    phaseHint = "Inbound → Qualify";
+  }
+
+  // Use a synthetic PR number based on current minute, so demo-runs feel real
+  const prNo = `PR-2412${String(Math.floor(Math.random() * 10) + 4)}`;
+
+  return (
+    <div className="rounded-lg border border-[var(--brand-green)]/35 bg-[var(--brand-green)]/5 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-[var(--brand-green)]/25 bg-[var(--brand-green)]/8 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px]">→</span>
+          <span className="text-[10.5px] uppercase tracking-[0.16em] text-[var(--brand-green)] font-semibold">
+            What happens next in your MWI-0703-02 workflow
+          </span>
+        </div>
+        <span className="font-mono text-[11px] text-[var(--brand-green)]">{prNo} created</span>
+      </div>
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-[12.5px]">
+        <NextRow
+          n="1"
+          title="Draft case file created"
+          body={`Auto-generated procurement number ${prNo}. Stored in your Procurement Tool with the AI's full analysis attached.`}
+        />
+        <NextRow
+          n="2"
+          title="Phase assigned"
+          body={`This deal lands in the "${phaseHint}" phase of your pipeline, at the "${landingStage}" stage.`}
+        />
+        <NextRow
+          n="3"
+          title={`Routed to ${owner === "—" ? "the right person" : owner}`}
+          body={`The approval buttons above wire to this person. They get a notification with the AI's draft + reasoning. They click Approve, Edit, or Reject.`}
+        />
+        <NextRow
+          n="4"
+          title="Then it flows through the rest of MWI-0703-02"
+          body={
+            isSupplier
+              ? "Supplier quote slots into the comparison table. Once Purchasing picks a winner, RFQ → PO → shipped → delivered → invoiced → paid."
+              : isStockMatch
+                ? "Quote goes out from stock (no special order opens). Customer accepts → order picked → shipped → invoiced → paid → revenue booked."
+                : "Sales Assistant confirms → AR clears (if needed) → Purchasing sources → quote out → customer accepts → order → ship → invoice → paid. Each step audited."
+          }
+        />
+        <div className="md:col-span-2 mt-1 pt-3 border-t border-[var(--brand-green)]/25 grid grid-cols-2 md:grid-cols-4 gap-3 text-[11.5px]">
+          <Field label="Customer" value={customer} />
+          <Field label="Intent" value={intent} />
+          <Field label="Urgency" value={urgency} />
+          <Field label="Risk" value={risk} />
+        </div>
+        <div className="md:col-span-2 text-[11px] text-[var(--brand-muted)] leading-relaxed italic">
+          In Phase 2 (Google Workspace) each of these actions writes back to your shared Sheet, sends the approval message in Chat, and updates Carol&apos;s daily numbers report — same flow, just inside the tools you already use.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NextRow({ n, title, body }: { n: string; title: string; body: string }) {
+  return (
+    <div className="flex gap-3">
+      <div className="h-6 w-6 rounded-md bg-[var(--brand-green)] text-[var(--brand-ink)] font-bold flex items-center justify-center text-[11px] shrink-0">
+        {n}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[13px] text-white font-medium leading-snug">{title}</div>
+        <div className="text-[11.5px] text-[var(--brand-muted)] leading-relaxed mt-0.5">{body}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-[var(--brand-ink)] border border-[var(--brand-line)]/60 px-2.5 py-1.5">
+      <div className="text-[9.5px] uppercase tracking-wider text-[var(--brand-muted)]">{label}</div>
+      <div className="text-[12px] text-white font-medium truncate" title={value}>{value}</div>
+    </div>
+  );
 }
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
