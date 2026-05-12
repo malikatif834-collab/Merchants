@@ -193,7 +193,7 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
             Pick a channel or paste anything. Watch the model classify, extract, check, score, and draft — in real time.
           </div>
         </div>
-        <Pill tone="brand">claude-opus-4-7</Pill>
+        <Pill tone="brand">claude-sonnet-4-6</Pill>
       </div>
 
       <div className="p-5 space-y-4">

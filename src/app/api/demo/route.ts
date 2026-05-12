@@ -4,7 +4,9 @@ import { SYSTEM_PROMPT } from "@/lib/aiPrompt";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = "claude-opus-4-7";
+// Sonnet 4.6: snappy first-token + plenty smart for this structured-extraction
+// task. Bump to "claude-opus-4-7" + thinking={type:"adaptive"} for production.
+const MODEL = "claude-sonnet-4-6";
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -47,7 +49,8 @@ export async function POST(req: Request) {
         const liveStream = client.messages.stream({
           model: MODEL,
           max_tokens: 2048,
-          thinking: { type: "adaptive" },
+          thinking: { type: "disabled" },
+          output_config: { effort: "low" },
           system: [
             {
               type: "text",

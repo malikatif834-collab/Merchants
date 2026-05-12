@@ -29,7 +29,7 @@ export default function DemoPage() {
       <div className="rounded-lg border border-[var(--brand-line)] bg-[var(--brand-charcoal-2)] p-4 text-[12.5px] text-[var(--brand-muted)] leading-relaxed">
         <div className="text-white font-medium mb-1 text-[13px]">How this works</div>
         <ul className="space-y-1">
-          <li>· The model is <span className="text-white">claude-opus-4-7</span> with adaptive thinking. It runs on Anthropic&apos;s infrastructure.</li>
+          <li>· The model is <span className="text-white">claude-sonnet-4-6</span> — fast, structured, runs on Anthropic&apos;s infrastructure. We can upgrade to Opus 4.7 in production once the workflow is validated.</li>
           <li>· The system prompt is grounded in your real catalog SKUs, customers, AR data, and supplier history.</li>
           <li>· Output streams back as five structured sections: classify → checklist → stock-check → AR risk → recommendation.</li>
           <li>· In Phase 2 (Google Workspace), this same brain runs against your live Gmail, Sheets, AppSheet case file, and Looker dashboard.</li>
