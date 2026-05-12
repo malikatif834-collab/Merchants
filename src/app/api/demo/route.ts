@@ -31,9 +31,7 @@ export async function POST(req: Request) {
 
   const input = typeof body.input === "string" ? body.input.trim() : "";
   const clientKey =
-    typeof body.clientKey === "string" && body.clientKey.startsWith("sk-")
-      ? body.clientKey
-      : "";
+    typeof body.clientKey === "string" ? body.clientKey.trim() : "";
   const pdfBase64 =
     typeof body.pdfBase64 === "string" ? body.pdfBase64.trim() : "";
   const pdfName =

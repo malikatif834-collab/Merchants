@@ -166,9 +166,7 @@ export function SetupBanner() {
             autoComplete="off"
             onPaste={(e) => {
               const pasted = e.clipboardData.getData("text").trim();
-              if (pasted.startsWith("sk-ant-")) {
-                setDraft(pasted);
-              }
+              if (pasted) setDraft(pasted);
             }}
           />
           <button
@@ -181,7 +179,7 @@ export function SetupBanner() {
           <button
             type="button"
             onClick={() => save(draft)}
-            disabled={!draft.trim().startsWith("sk-ant-")}
+            disabled={draft.trim().length < 10}
             className="bg-[var(--brand-orange)] hover:bg-[var(--brand-orange-600)] text-[var(--brand-ink)] font-semibold px-4 py-2.5 rounded-md text-[13px] disabled:opacity-40"
           >
             Save & start
