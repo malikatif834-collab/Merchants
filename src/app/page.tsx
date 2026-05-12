@@ -8,6 +8,7 @@ import { AIWorkingNow } from "@/components/AIWorkingNow";
 import { LiveAIPanel } from "@/components/LiveAIPanel";
 import { SetupBanner } from "@/components/SetupBanner";
 import { SimulationPanel } from "@/components/SimulationPanel";
+import { PrototypeNotice } from "@/components/PrototypeNotice";
 import {
   CASE_FILES,
   KPIS,
@@ -64,6 +65,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-7 space-y-7">
       <Hero />
+      <PrototypeNotice />
       <SetupBanner />
       <AIWorkingNow />
       <KpiStrip
