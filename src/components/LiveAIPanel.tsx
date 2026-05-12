@@ -115,6 +115,21 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) setClientKey(saved);
+
+    // Pick up changes saved elsewhere (eg. SetupBanner) without a page reload.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) setClientKey(e.newValue ?? "");
+    };
+    const onCustom = () => {
+      const v = localStorage.getItem(STORAGE_KEY);
+      setClientKey(v ?? "");
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("merchants_ai_key_changed", onCustom);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("merchants_ai_key_changed", onCustom);
+    };
   }, []);
 
   const saveKey = (k: string) => {
@@ -184,6 +199,17 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
     setError(null);
     setStatus("thinking");
 
+    // Re-read the key from storage at request time so a key saved elsewhere
+    // (eg. by the SetupBanner) is picked up without a page reload.
+    let keyToSend = clientKey;
+    if (typeof window !== "undefined") {
+      const fresh = localStorage.getItem(STORAGE_KEY);
+      if (fresh) {
+        keyToSend = fresh;
+        if (fresh !== clientKey) setClientKey(fresh);
+      }
+    }
+
     const ac = new AbortController();
     abortRef.current = ac;
 
@@ -193,7 +219,7 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           input,
-          clientKey: clientKey || undefined,
+          clientKey: keyToSend || undefined,
           pdfBase64: pdfBase64 || undefined,
           pdfName: pdfName || undefined,
           pdfDirection: pdfBase64 ? pdfDirection : undefined,

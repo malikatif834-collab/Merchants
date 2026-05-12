@@ -30,6 +30,10 @@ export function SetupBanner() {
     if (typeof window === "undefined") return;
     if (trimmed) localStorage.setItem(STORAGE_KEY, trimmed);
     else localStorage.removeItem(STORAGE_KEY);
+    // Same-tab listeners (SetupBanner ↔ LiveAIPanel) don't fire the 'storage'
+    // event — that's cross-tab only. Dispatch a custom event so the AI panel
+    // picks up the new key immediately without a refresh.
+    window.dispatchEvent(new Event("merchants_ai_key_changed"));
     setHasKey(!!trimmed);
     setShowEdit(false);
     setDraft("");
