@@ -6,7 +6,16 @@ export const dynamic = "force-dynamic";
 
 const MODEL = "claude-sonnet-4-6";
 
-// JSON schema the model returns. Kept flat and explicit for reliability.
+const adviceStep = {
+  type: "object",
+  additionalProperties: false,
+  required: ["next", "why"],
+  properties: {
+    next: { type: "string" },
+    why: { type: "string" },
+  },
+} as const;
+
 const SCENARIO_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -35,6 +44,9 @@ const SCENARIO_SCHEMA = {
     "supplierQuotes",
     "recommendedSupplier",
     "marginAfterSourcingPct",
+    "negotiationAttempted",
+    "negotiationRound",
+    "finalSupplierPrice",
     "customerResponse",
     "finalOutcome",
     "finalRevenue",
@@ -103,6 +115,23 @@ const SCENARIO_SCHEMA = {
     },
     recommendedSupplier: { type: ["string", "null"] },
     marginAfterSourcingPct: { type: "number" },
+    negotiationAttempted: { type: "boolean" },
+    negotiationRound: {
+      anyOf: [
+        { type: "null" },
+        {
+          type: "object",
+          additionalProperties: false,
+          required: ["ask", "response", "savings"],
+          properties: {
+            ask: { type: "string" },
+            response: { type: "string" },
+            savings: { type: "number" },
+          },
+        },
+      ],
+    },
+    finalSupplierPrice: { type: ["number", "null"] },
     customerResponse: {
       type: "string",
       enum: ["accepted", "declined", "negotiating", "silent"],
@@ -115,12 +144,12 @@ const SCENARIO_SCHEMA = {
       additionalProperties: false,
       required: ["onIntake", "onStock", "onAR", "onSourcing", "onQuote", "onClose"],
       properties: {
-        onIntake: { type: "string" },
-        onStock: { type: "string" },
-        onAR: { type: "string" },
-        onSourcing: { type: "string" },
-        onQuote: { type: "string" },
-        onClose: { type: "string" },
+        onIntake: adviceStep,
+        onStock: adviceStep,
+        onAR: adviceStep,
+        onSourcing: adviceStep,
+        onQuote: adviceStep,
+        onClose: adviceStep,
       },
     },
   },

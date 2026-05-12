@@ -213,9 +213,8 @@ function DealCard({ deal }: { deal: SimDeal }) {
             <Stat label="Margin" value={isPaid ? money(s.finalMarginDollars) : "—"} tone={isPaid ? "ok" : "neutral"} />
             <Stat label="Cycle" value={cycleLabel(deal)} tone="neutral" />
           </div>
-          <div className="mt-2 text-[12px] text-white/85 leading-relaxed italic">
-            <span className="text-[var(--brand-orange)] font-semibold not-italic">AI close:</span>{" "}
-            {s.advice.onClose}
+          <div className="mt-3">
+            <ButlerAdvice step={s.advice.onClose} stage="Close" />
           </div>
         </div>
       )}
@@ -304,11 +303,10 @@ function StageContent({ deal }: { deal: SimDeal }) {
   const s = deal.scenario;
   const stage = deal.stage;
 
-  // Show different sub-content based on stage
   if (stage === "incoming" || stage === "intake") {
     return (
-      <div className="p-4 space-y-2">
-        <AdviceLine label="Intake" text={s.advice.onIntake} />
+      <div className="p-4 space-y-3">
+        <ButlerAdvice step={s.advice.onIntake} stage="Intake" />
         <Mini label="Product" value={`${s.productDescription} · ${s.productQty} ${s.productUom}`} />
       </div>
     );
@@ -316,8 +314,8 @@ function StageContent({ deal }: { deal: SimDeal }) {
 
   if (stage === "stock_check") {
     return (
-      <div className="p-4 space-y-2">
-        <AdviceLine label="Stock" text={s.advice.onStock} />
+      <div className="p-4 space-y-3">
+        <ButlerAdvice step={s.advice.onStock} stage="Stock check" />
         <div className="grid grid-cols-2 gap-2">
           <Mini
             label="Match"
@@ -338,8 +336,8 @@ function StageContent({ deal }: { deal: SimDeal }) {
 
   if (stage === "ar_review") {
     return (
-      <div className="p-4 space-y-2">
-        <AdviceLine label="AR" text={s.advice.onAR} />
+      <div className="p-4 space-y-3">
+        <ButlerAdvice step={s.advice.onAR} stage="AR review" />
         <div className="grid grid-cols-3 gap-2">
           <Mini label="Credit" value={s.customerCreditRating} />
           <Mini label="Risk" value={s.arRisk} />
@@ -354,16 +352,22 @@ function StageContent({ deal }: { deal: SimDeal }) {
 
   if (stage === "sourcing_rfq") {
     return (
-      <div className="p-4 space-y-2">
-        <AdviceLine label="Sourcing" text="RFQs going out to suppliers…" />
-        <div className="flex items-center gap-2 text-[11.5px] text-[var(--brand-muted)]">
+      <div className="p-4 space-y-3">
+        <ButlerAdvice
+          step={{
+            next: "Send RFQs to shortlisted suppliers.",
+            why: s.advice.onSourcing.why,
+          }}
+          stage="Sourcing"
+        />
+        <div className="flex items-center gap-2 flex-wrap text-[11.5px]">
           {s.supplierQuotes.map((q) => (
             <span
               key={q.name}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--brand-charcoal-2)] border border-[var(--brand-line)]"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--brand-charcoal-2)] border border-[var(--brand-line)] text-[var(--brand-muted)]"
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--brand-orange)] animate-pulse" />
-              {q.name}
+              RFQ to {q.name}
             </span>
           ))}
         </div>
@@ -381,7 +385,7 @@ function StageContent({ deal }: { deal: SimDeal }) {
       <div className="p-4 space-y-3">
         {s.supplierQuotes.length > 0 && (
           <>
-            <AdviceLine label="Sourcing" text={s.advice.onSourcing} />
+            <ButlerAdvice step={s.advice.onSourcing} stage="Sourcing" />
             <div className="overflow-x-auto rounded-md border border-[var(--brand-line)]/60">
               <table className="w-full text-[11.5px]">
                 <thead className="bg-[var(--brand-charcoal-2)] text-[9.5px] uppercase tracking-wider text-[var(--brand-muted)]">
@@ -423,9 +427,19 @@ function StageContent({ deal }: { deal: SimDeal }) {
                 </tbody>
               </table>
             </div>
+            {s.negotiationAttempted && s.negotiationRound && (
+              <NegotiationCard
+                round={s.negotiationRound}
+                finalPrice={s.finalSupplierPrice}
+                originalPrice={
+                  s.supplierQuotes.find((q) => q.name === s.recommendedSupplier)
+                    ?.unitPrice ?? null
+                }
+              />
+            )}
           </>
         )}
-        <AdviceLine label="Quote" text={s.advice.onQuote} />
+        <ButlerAdvice step={s.advice.onQuote} stage="Customer quote" />
       </div>
     );
   }
@@ -437,10 +451,10 @@ function StageContent({ deal }: { deal: SimDeal }) {
     stage === "invoiced"
   ) {
     return (
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-3">
         <div className="text-[12.5px] text-white/90 leading-relaxed">
           <span className="text-[var(--brand-green)] font-semibold">✓ Customer accepted.</span>{" "}
-          Order tracking through fulfillment.
+          Tracking through fulfillment.
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Mini label="Selling at" value={money(s.estimatedValue)} />
@@ -456,13 +470,75 @@ function StageContent({ deal }: { deal: SimDeal }) {
   return null;
 }
 
-function AdviceLine({ label, text }: { label: string; text: string }) {
+function ButlerAdvice({
+  step,
+  stage,
+}: {
+  step: { next: string; why: string };
+  stage: string;
+}) {
   return (
-    <div className="flex items-start gap-2 text-[12.5px] leading-relaxed">
-      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9.5px] uppercase tracking-wider font-semibold bg-[var(--brand-orange)]/15 text-[var(--brand-orange)] mt-0.5">
-        AI · {label}
-      </span>
-      <span className="text-white/90">{text}</span>
+    <div className="rounded-md border border-[var(--brand-orange)]/35 bg-[var(--brand-orange)]/8 overflow-hidden">
+      <div className="px-3 py-2 flex items-start gap-2.5">
+        <span className="shrink-0 mt-0.5 text-[9.5px] uppercase tracking-[0.14em] font-semibold text-[var(--brand-orange)]">
+          {stage}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] text-white font-semibold leading-snug flex items-start gap-2">
+            <span className="text-[var(--brand-orange)]">→</span>
+            <span>{step.next}</span>
+          </div>
+        </div>
+      </div>
+      <details className="group border-t border-[var(--brand-orange)]/15">
+        <summary className="px-3 py-1.5 text-[10.5px] text-[var(--brand-muted)] hover:text-white cursor-pointer flex items-center gap-1.5 select-none">
+          <span className="group-open:rotate-90 transition-transform inline-block">›</span>
+          Why
+        </summary>
+        <div className="px-3 pb-2.5 pt-0.5 text-[11.5px] text-[var(--brand-muted)] leading-relaxed">
+          {step.why}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function NegotiationCard({
+  round,
+  finalPrice,
+  originalPrice,
+}: {
+  round: { ask: string; response: string; savings: number };
+  finalPrice: number | null;
+  originalPrice: number | null;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--brand-green)]/30 bg-[var(--brand-green)]/5 p-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[9.5px] uppercase tracking-[0.14em] font-semibold text-[var(--brand-green)]">
+          Negotiation round
+        </span>
+        {round.savings > 0 && (
+          <Pill tone="ok">Saved {money(round.savings, { compact: true })}</Pill>
+        )}
+      </div>
+      <div className="text-[12px] text-white/95 leading-relaxed">
+        <span className="text-[var(--brand-orange)] font-semibold">AI asked:</span> {round.ask}
+      </div>
+      <div className="text-[12px] text-white/95 leading-relaxed">
+        <span className="text-[var(--brand-green)] font-semibold">Supplier replied:</span> {round.response}
+      </div>
+      {finalPrice !== null && originalPrice !== null && (
+        <div className="pt-1.5 border-t border-[var(--brand-green)]/20 text-[11.5px] text-[var(--brand-muted)] flex items-center gap-3">
+          <span>
+            Original: <span className="text-white line-through">${originalPrice.toFixed(2)}/unit</span>
+          </span>
+          <span>→</span>
+          <span>
+            Final: <span className="text-[var(--brand-green)] font-semibold">${finalPrice.toFixed(2)}/unit</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

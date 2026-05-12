@@ -633,23 +633,80 @@ function PdfUploader({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={openPicker}
-          disabled={disabled || reading}
-          className={`w-full flex items-center justify-center gap-2 rounded-md border border-[var(--brand-line)]/60 bg-[var(--brand-charcoal-2)]/60 hover:bg-[var(--brand-charcoal-2)] hover:border-[var(--brand-orange)]/60 cursor-pointer text-[13px] text-white/85 py-4 transition-colors ${disabled || reading ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          {reading ? (
-            <>
-              <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--brand-orange)] border-t-transparent animate-spin" />
-              Reading PDF…
-            </>
-          ) : (
-            <>📎 Click to choose a PDF — or drag &amp; drop it here (max 3 MB)</>
-          )}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={disabled || reading}
+            className={`w-full flex items-center justify-center gap-2 rounded-md border border-[var(--brand-line)]/60 bg-[var(--brand-charcoal-2)]/60 hover:bg-[var(--brand-charcoal-2)] hover:border-[var(--brand-orange)]/60 cursor-pointer text-[13px] text-white/85 py-4 transition-colors ${disabled || reading ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {reading ? (
+              <>
+                <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--brand-orange)] border-t-transparent animate-spin" />
+                Reading PDF…
+              </>
+            ) : (
+              <>📎 Click to choose a PDF — or drag &amp; drop it here (max 3 MB)</>
+            )}
+          </button>
+          <div className="mt-2 pt-2 border-t border-[var(--brand-line)]/40">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--brand-muted)] mb-1.5">
+              Don&apos;t have a PDF handy? Try a sample:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <SamplePdf
+                href="/sample-pdfs/customer-rfq-caesars-windsor.pdf"
+                label="Customer RFQ · Caesars Windsor"
+                tone="customer"
+              />
+              <SamplePdf
+                href="/sample-pdfs/customer-po-windsor-assembly.pdf"
+                label="Customer PO · Windsor Assembly"
+                tone="customer"
+              />
+              <SamplePdf
+                href="/sample-pdfs/supplier-quote-cascades.pdf"
+                label="Supplier quote · Cascades"
+                tone="supplier"
+              />
+              <SamplePdf
+                href="/sample-pdfs/supplier-quote-diversey.pdf"
+                label="Supplier quote · Diversey"
+                tone="supplier"
+              />
+            </div>
+            <div className="mt-1 text-[10px] text-[var(--brand-muted)] italic">
+              Download → drop above → toggle direction → Run AI live.
+            </div>
+          </div>
+        </>
       )}
     </div>
+  );
+}
+
+function SamplePdf({
+  href,
+  label,
+  tone,
+}: {
+  href: string;
+  label: string;
+  tone: "customer" | "supplier";
+}) {
+  const accent =
+    tone === "customer"
+      ? "border-[var(--brand-orange)]/40 text-[var(--brand-orange)] hover:bg-[var(--brand-orange)]/10"
+      : "border-[var(--brand-green)]/40 text-[var(--brand-green)] hover:bg-[var(--brand-green)]/10";
+  return (
+    <a
+      href={href}
+      download
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border ${accent} bg-[var(--brand-charcoal)] text-[11px] font-medium transition-colors`}
+    >
+      <span className="opacity-70">▤</span>
+      {label}
+    </a>
   );
 }
 

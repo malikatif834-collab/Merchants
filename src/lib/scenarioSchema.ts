@@ -13,13 +13,24 @@ export interface SupplierQuoteSim {
   note: string;
 }
 
+export interface AdviceStep {
+  next: string; // imperative — what to do next ("Approve and route to AR")
+  why: string; // reasoning — short, controller-tone
+}
+
 export interface ScenarioAdvice {
-  onIntake: string;
-  onStock: string;
-  onAR: string;
-  onSourcing: string;
-  onQuote: string;
-  onClose: string;
+  onIntake: AdviceStep;
+  onStock: AdviceStep;
+  onAR: AdviceStep;
+  onSourcing: AdviceStep;
+  onQuote: AdviceStep;
+  onClose: AdviceStep;
+}
+
+export interface NegotiationRound {
+  ask: string; // what AI proposed to the supplier
+  response: string; // what the supplier came back with
+  savings: number; // $ savings vs initial quote (0 if none)
 }
 
 export interface GeneratedScenario {
@@ -37,20 +48,20 @@ export interface GeneratedScenario {
     | "automotive"
     | "food_service";
   customerCreditRating: "A" | "B" | "C" | "D";
-  customerArStatus: string; // free-text e.g. "clean" / "moderate aging" / "90+ day balance flagged"
+  customerArStatus: string;
 
   // Inbound
-  inboundChannel: InboundChannel | "customer_pdf";
-  inboundSummary: string; // one sentence
-  inboundBody: string; // 2-5 sentence email-like text
+  inboundChannel: "email" | "portal" | "phone" | "walkup" | "customer_pdf";
+  inboundSummary: string;
+  inboundBody: string;
 
   // Request
   productDescription: string;
   productQty: number;
-  productUom: string; // "case" | "drum" | "jug" | "pallet" | ...
+  productUom: string;
 
-  estimatedValue: number; // CAD
-  marginTargetPct: number; // 18-32
+  estimatedValue: number;
+  marginTargetPct: number;
 
   // Stock decision
   isStockMatch: boolean;
@@ -66,17 +77,22 @@ export interface GeneratedScenario {
   isSpecialOrder: boolean;
   supplierQuotes: SupplierQuoteSim[];
   recommendedSupplier: string | null;
-  marginAfterSourcingPct: number; // can shift after supplier pick
+  marginAfterSourcingPct: number;
+
+  // Negotiation round (only when special-order with quotes)
+  negotiationAttempted: boolean;
+  negotiationRound: NegotiationRound | null;
+  finalSupplierPrice: number | null;
 
   // Customer outcome
   customerResponse: "accepted" | "declined" | "negotiating" | "silent";
 
   // Final
   finalOutcome: "won" | "lost";
-  finalRevenue: number; // 0 if lost
-  finalMarginDollars: number; // 0 if lost
+  finalRevenue: number;
+  finalMarginDollars: number;
 
-  // AI commentary at each stage
+  // AI commentary — butler style
   advice: ScenarioAdvice;
 }
 

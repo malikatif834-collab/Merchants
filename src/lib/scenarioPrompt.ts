@@ -54,15 +54,50 @@ If isStockMatch is false → produce 2–3 supplier quotes with realistic price/
 If arDecision = "decline" or "hold_pending_review" → customerResponse is usually "declined" or "silent" and outcome "lost".
 If outcome = "lost" → finalRevenue and finalMarginDollars are both 0.
 
-=== ADVICE TONE ===
+=== ADVICE TONE — BUTLER STYLE ===
 
-"advice.*" fields are AI commentary as the deal moves through. Short, sharp, controller-voice. Examples:
-- onIntake: "Looks like a Caesars repeat. F&B order, $11K range, fast turnaround needed."
-- onStock: "Match against NIT-BL-LG-100, 312 in stock — converting to standard fulfillment, recover ~$1.1K in margin vs running as special order."
-- onAR: "Credit A, AR clean, exposure within limits. Proceed."
-- onSourcing: "Cascades $26/case 11d, Kruger $24.80/case 18d. Customer's deadline is tight — recommend Cascades despite $1.30/case premium. Margin holds at 22.8%."
-- onQuote: "Quote out at $10,590. Margin 27.4% — at category target."
-- onClose: "$10,590 paid, $2,902 margin booked. Cycle time 1.9 days."
+Each "advice.*" field has TWO short parts:
+- "next": imperative, action-first, ≤ 12 words. What should happen next in the MWI-0703-02 workflow. Direct, no qualifiers.
+- "why": ≤ 20 words. Brief reasoning in controller-voice (numbers, risk, margin).
+
+Examples:
+- onIntake: {
+    next: "Confirm checklist and route to stock check.",
+    why: "Caesars repeat order, 200 cases gloves, 5-day window. Standard category."
+  }
+- onStock: {
+    next: "Convert to standard fulfillment from NIT-BL-LG-100.",
+    why: "312 cases on hand; recover ~$1.1K margin vs running as special order."
+  }
+- onAR: {
+    next: "Proceed without hold.",
+    why: "Credit A, AR clean, exposure within $50K limit."
+  }
+- onSourcing: {
+    next: "Send RFQs to Cascades, Kruger, Atlas — recommend Cascades on speed.",
+    why: "Cascades 11-day lead vs Kruger 18-day. Customer deadline tight. $1.30/case premium acceptable."
+  }
+- onQuote: {
+    next: "Send quote at $10,590; net-30 terms.",
+    why: "Margin holds at 27.4% — at category target. Customer expects same-day reply."
+  }
+- onClose: {
+    next: "Book revenue, close case, log to audit.",
+    why: "$10,590 paid in 28 days. Margin $2,902 (27.4%). Cycle 1.9 days."
+  }
+
+For LOST deals, "next" should reflect the action that closed it ("Close as lost — declined on price" or "Hold and follow up in 30 days").
+
+=== NEGOTIATION (special orders only) ===
+
+When isSpecialOrder is true AND you generate supplier quotes:
+- 60% of the time, set negotiationAttempted = true with a one-round negotiation:
+  - negotiationRound.ask: short description of what AI proposed (e.g. "Asked Cascades to match Kruger's $24.80/case for 12-month recurring lock")
+  - negotiationRound.response: how the supplier responded (e.g. "Cascades countered at $25.20 — accepts 5% match given customer profile")
+  - negotiationRound.savings: $ saved vs original supplier quote (e.g. 216 for $216 saved)
+  - finalSupplierPrice: the unit price after negotiation (lower than the original supplier quote)
+- 40% of the time, set negotiationAttempted = false, negotiationRound = null, finalSupplierPrice = the original recommended supplier's unitPrice
+- If isStockMatch is true OR no special order: negotiationAttempted = false, negotiationRound = null, finalSupplierPrice = null
 
 === FINAL ===
 
