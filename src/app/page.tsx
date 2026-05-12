@@ -1,9 +1,13 @@
+"use client";
+
+import { useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, Pill } from "@/components/Card";
 import { StageBadge } from "@/components/StageBadge";
 import { AIWorkingNow } from "@/components/AIWorkingNow";
 import { LiveAIPanel } from "@/components/LiveAIPanel";
 import { SetupBanner } from "@/components/SetupBanner";
+import { SimulationPanel } from "@/components/SimulationPanel";
 import {
   CASE_FILES,
   KPIS,
@@ -15,12 +19,45 @@ import {
   revenueBookedThisMonth,
 } from "@/lib/data";
 import { ageLabel, money } from "@/lib/format";
-import { PHASE_LABEL, phaseFor } from "@/lib/types";
+import {
+  PHASE_LABEL,
+  phaseFor,
+  type LifecyclePhase,
+} from "@/lib/types";
+import { useSimulation } from "@/hooks/useSimulation";
+import {
+  simStageToPhase,
+  type SimDeal,
+} from "@/lib/scenarioSchema";
 
 export default function HomePage() {
-  const phases = pipelineByPhase();
-  const closed = recentlyClosed();
-  const revenue = revenueBookedThisMonth();
+  const sim = useSimulation();
+
+  // Merge static seeded pipeline with running simulated deals for live counts.
+  const phases = useMemo(() => {
+    const base = pipelineByPhase();
+    for (const d of sim.deals) {
+      const p = simStageToPhase(d.stage) as LifecyclePhase;
+      base[p].count += 1;
+      base[p].value += d.scenario.estimatedValue;
+    }
+    return base;
+  }, [sim.deals]);
+
+  const baseClosed = recentlyClosed();
+  const baseRevenue = revenueBookedThisMonth();
+
+  // Live revenue includes paid simulated deals
+  const simPaid = sim.deals.filter((d) => d.stage === "paid");
+  const liveRevenue =
+    baseRevenue + simPaid.reduce((s, d) => s + d.scenario.finalRevenue, 0);
+
+  // Live margin recovered counter (additive on every simulated win)
+  const simMarginRecovered = simPaid.reduce(
+    (s, d) => s + d.scenario.finalMarginDollars,
+    0
+  );
+
   const queue = pendingApprovals();
   const atRisk = PIPELINE.filter((d) => d.atRisk);
 
@@ -29,8 +66,20 @@ export default function HomePage() {
       <Hero />
       <SetupBanner />
       <AIWorkingNow />
-      <KpiStrip revenue={revenue} />
-      <LifecycleBoard phases={phases} />
+      <KpiStrip
+        revenue={liveRevenue}
+        marginExtra={simMarginRecovered}
+        simulatedClosed={simPaid.length}
+        baseClosedCount={baseClosed.length}
+      />
+      <LifecycleBoard phases={phases} simDeals={sim.deals} />
+      <SimulationPanel
+        deals={sim.deals}
+        isGenerating={sim.isGenerating}
+        error={sim.error}
+        generateAndRun={sim.generateAndRun}
+        clear={sim.clear}
+      />
       <LiveAIPanel compact />
 
       <div className="grid grid-cols-12 gap-6">
@@ -41,7 +90,11 @@ export default function HomePage() {
         <aside className="col-span-12 lg:col-span-5 space-y-6">
           <ActiveDeals />
           {atRisk.length > 0 && <AtRiskPanel deals={atRisk} />}
-          <RecentlyClosed deals={closed} totalRevenue={revenue} />
+          <RecentlyClosed
+            baseDeals={baseClosed}
+            simPaid={simPaid}
+            totalRevenue={liveRevenue}
+          />
         </aside>
       </div>
     </div>
@@ -76,12 +129,22 @@ function Hero() {
   );
 }
 
-function KpiStrip({ revenue }: { revenue: number }) {
+function KpiStrip({
+  revenue,
+  marginExtra,
+  simulatedClosed,
+  baseClosedCount,
+}: {
+  revenue: number;
+  marginExtra: number;
+  simulatedClosed: number;
+  baseClosedCount: number;
+}) {
   const items = [
     {
       label: "Revenue booked this month",
       value: money(revenue, { compact: true }),
-      sub: `${recentlyClosed().length} deals · paid / fulfilled`,
+      sub: `${baseClosedCount + simulatedClosed} deals · paid / fulfilled${simulatedClosed > 0 ? ` (+${simulatedClosed} simulated)` : ""}`,
       tone: "ok" as const,
     },
     {
@@ -91,9 +154,9 @@ function KpiStrip({ revenue }: { revenue: number }) {
       tone: "brand" as const,
     },
     {
-      label: "Margin recovered (stock catches)",
-      value: money(KPIS.stockRecovered, { compact: true }),
-      sub: `${KPIS.stockRecoveredCount} would-be special orders this month`,
+      label: "Margin recovered",
+      value: money(KPIS.stockRecovered + marginExtra, { compact: true }),
+      sub: `${KPIS.stockRecoveredCount} stock catches this month${marginExtra > 0 ? ` · +${money(marginExtra, { compact: true })} live` : ""}`,
       tone: "ok" as const,
     },
     {
@@ -132,21 +195,32 @@ function KpiStrip({ revenue }: { revenue: number }) {
 
 function LifecycleBoard({
   phases,
+  simDeals,
 }: {
   phases: ReturnType<typeof pipelineByPhase>;
+  simDeals: SimDeal[];
 }) {
   return (
     <Card>
       <CardHeader
         title="The whole procurement lifecycle, live"
         subtitle="From customer ask → supplier negotiation → order placed → shipped → invoiced → paid"
-        right={<Pill tone="brand">{PIPELINE.length} deals in flight</Pill>}
+        right={
+          <Pill tone="brand">
+            {PIPELINE.length + simDeals.length} deals in flight
+          </Pill>
+        }
       />
       <div className="p-4 overflow-x-auto scrollbar-thin">
         <div className="grid grid-cols-6 gap-2 min-w-[760px]">
           {PHASE_ORDER.map((p, i) => {
             const cell = phases[p];
-            const phaseDeals = PIPELINE.filter((d) => phaseFor(d.stage) === p);
+            const phaseStaticDeals = PIPELINE.filter(
+              (d) => phaseFor(d.stage) === p
+            );
+            const phaseSimDeals = simDeals.filter(
+              (d) => simStageToPhase(d.stage) === p
+            );
             const isRevenue = p === "revenue";
             return (
               <div
@@ -162,7 +236,9 @@ function LifecycleBoard({
                     {i + 1}
                   </span>
                   {i < PHASE_ORDER.length - 1 && (
-                    <span className="text-[var(--brand-muted)]/60 text-[10px]">→</span>
+                    <span className="text-[var(--brand-muted)]/60 text-[10px]">
+                      →
+                    </span>
                   )}
                 </div>
                 <div
@@ -176,7 +252,9 @@ function LifecycleBoard({
                   <span className="text-[20px] font-semibold tabular-nums text-white">
                     {cell.count}
                   </span>
-                  <span className="text-[10px] text-[var(--brand-muted)]">deals</span>
+                  <span className="text-[10px] text-[var(--brand-muted)]">
+                    deals
+                  </span>
                 </div>
                 <div
                   className={`text-[11px] tabular-nums mt-0.5 ${
@@ -186,7 +264,16 @@ function LifecycleBoard({
                   {money(cell.value, { compact: true })}
                 </div>
                 <div className="mt-2 pt-2 border-t border-[var(--brand-line)]/60 space-y-1">
-                  {phaseDeals.slice(0, 3).map((d) => (
+                  {phaseSimDeals.slice(0, 3).map((d) => (
+                    <div
+                      key={d.id}
+                      className="block text-[10.5px] text-[var(--brand-orange)] truncate fade-in-up"
+                      title={`${d.scenario.customerName} · ${d.scenario.productDescription}`}
+                    >
+                      · <span className="opacity-70">SIM</span> {d.scenario.customerName.split(" — ")[0].slice(0, 22)}
+                    </div>
+                  ))}
+                  {phaseStaticDeals.slice(0, 3).map((d) => (
                     <Link
                       key={d.id}
                       href={`/case/${d.id}`}
@@ -196,9 +283,9 @@ function LifecycleBoard({
                       · {d.customer.split(" — ")[0]}
                     </Link>
                   ))}
-                  {phaseDeals.length > 3 && (
+                  {phaseStaticDeals.length + phaseSimDeals.length > 3 && (
                     <div className="text-[10px] text-[var(--brand-muted)] italic">
-                      +{phaseDeals.length - 3} more
+                      +{phaseStaticDeals.length + phaseSimDeals.length - 3} more
                     </div>
                   )}
                 </div>
@@ -237,9 +324,10 @@ function ApprovalQueue({
           >
             <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-[11px] text-[var(--brand-orange)]">{c.procurementNo}</span>
+                <span className="font-mono text-[11px] text-[var(--brand-orange)]">
+                  {c.procurementNo}
+                </span>
                 <StageBadge stage={c.stage} />
-                <RecTypeBadge type={rec.type} />
               </div>
               <div className="text-[11.5px] text-[var(--brand-muted)]">
                 {c.customer.name.split(" — ")[0]} · {money(c.estValue, { compact: true })}
@@ -264,33 +352,11 @@ function ApprovalQueue({
   );
 }
 
-function RecTypeBadge({ type }: { type: string }) {
-  const tone =
-    type === "credit_flag" || type === "risk_summary"
-      ? "warn"
-      : type === "stock_match"
-        ? "ok"
-        : "info";
-  const labels: Record<string, string> = {
-    stock_match: "Stock match",
-    credit_flag: "AR risk",
-    supplier_suggest: "Supplier shortlist",
-    rfq_draft: "RFQ draft",
-    quote_compare: "Quote comparison",
-    quote_draft: "Quote draft",
-    follow_up: "Follow-up",
-    checklist_extract: "Checklist",
-    classification: "Classification",
-    risk_summary: "Risk brief",
-  };
-  return <Pill tone={tone as never}>{labels[type] ?? type}</Pill>;
-}
-
 function ActiveDeals() {
   return (
     <Card>
       <CardHeader
-        title="Active deals"
+        title="Active deals (saved scenarios)"
         subtitle="Click any to walk through end-to-end"
       />
       <div className="divide-y divide-[var(--brand-line)]/60">
@@ -336,9 +402,13 @@ function AtRiskPanel({ deals }: { deals: typeof PIPELINE }) {
           >
             <div className="flex items-center justify-between gap-2 mb-0.5">
               <span className="text-[13px] text-white font-medium">{d.customer}</span>
-              <span className="text-[11.5px] text-white tabular-nums">{money(d.value, { compact: true })}</span>
+              <span className="text-[11.5px] text-white tabular-nums">
+                {money(d.value, { compact: true })}
+              </span>
             </div>
-            <div className="text-[11.5px] text-[var(--brand-amber)]">⚠ {d.riskReason}</div>
+            <div className="text-[11.5px] text-[var(--brand-amber)]">
+              ⚠ {d.riskReason}
+            </div>
           </Link>
         ))}
       </div>
@@ -347,10 +417,12 @@ function AtRiskPanel({ deals }: { deals: typeof PIPELINE }) {
 }
 
 function RecentlyClosed({
-  deals,
+  baseDeals,
+  simPaid,
   totalRevenue,
 }: {
-  deals: typeof PIPELINE;
+  baseDeals: typeof PIPELINE;
+  simPaid: SimDeal[];
   totalRevenue: number;
 }) {
   return (
@@ -361,8 +433,33 @@ function RecentlyClosed({
         right={<Pill tone="ok">{money(totalRevenue, { compact: true })}</Pill>}
       />
       <div className="divide-y divide-[var(--brand-line)]/60">
-        {deals.map((d) => (
-          <div key={d.id} className="p-3 flex items-center justify-between gap-2">
+        {simPaid.map((d) => (
+          <div
+            key={d.id}
+            className="p-3 flex items-center justify-between gap-2 fade-in-up bg-[var(--brand-green)]/5"
+          >
+            <div className="min-w-0">
+              <div className="text-[13px] text-white font-medium truncate">
+                <span className="text-[10px] text-[var(--brand-orange)] mr-1.5">SIM</span>
+                {d.scenario.customerName.split(" — ")[0]}
+              </div>
+              <div className="text-[11px] text-[var(--brand-muted)] truncate">
+                {d.scenario.productDescription}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[13px] text-[var(--brand-green)] tabular-nums font-semibold">
+                {money(d.scenario.finalRevenue, { compact: true })}
+              </div>
+              <div className="text-[10px] text-[var(--brand-muted)]">just now</div>
+            </div>
+          </div>
+        ))}
+        {baseDeals.map((d) => (
+          <div
+            key={d.id}
+            className="p-3 flex items-center justify-between gap-2"
+          >
             <div className="min-w-0">
               <div className="text-[13px] text-white font-medium truncate">
                 {d.customer.split(" — ")[0]}
