@@ -1,33 +1,33 @@
 import { Card } from "./Card";
 
 const SOURCES = [
-  { icon: "✉", name: "Gmail", note: "customer & supplier email" },
-  { icon: "▦", name: "Customer Portal", note: "merchants.ca quote requests" },
-  { icon: "☎", name: "Phone Notes", note: "voicemail · call transcripts" },
-  { icon: "✎", name: "Walk-up Capture", note: "rep notepad photos" },
-  { icon: "▤", name: "Catalog DB", note: "SKUs · stock on hand · pricing" },
-  { icon: "$", name: "AR Ledger", note: "aging · payment history · NSF" },
-  { icon: "⛓", name: "Supplier History", note: "lead times · quotes · plates" },
-  { icon: "⚙", name: "Procurement Tool", note: "case file · stages · audit" },
+  { icon: "✉", name: "Email inbox", note: "from customers and suppliers" },
+  { icon: "▤", name: "Order portal", note: "customers entering quote requests" },
+  { icon: "☎", name: "Phone & voicemail", note: "transcribed calls, rep notes" },
+  { icon: "✎", name: "Rep walk-up notes", note: "photos of notepads from visits" },
+  { icon: "▦", name: "PDFs in", note: "customer RFQs, POs · supplier quotes" },
+  { icon: "▤", name: "Product catalog", note: "what's in stock, what it costs" },
+  { icon: "$", name: "AR ledger", note: "who owes what, how long" },
+  { icon: "⛓", name: "Supplier history", note: "lead times, prior quotes" },
 ];
 
 const STEPS = [
-  { name: "Channel intake", note: "any inbound → one checklist" },
-  { name: "Checklist extraction", note: "fields + confidence + sources" },
-  { name: "Stock match", note: "semantic match against catalog" },
-  { name: "Risk scoring", note: "AR aging, NSF, margin floor" },
-  { name: "Sourcing", note: "supplier shortlist, RFQ, quote parse" },
-  { name: "Drafting", note: "quotes, follow-ups, briefs" },
-  { name: "Approval routing", note: "right person, right moment" },
+  { name: "Read it", note: "any format, any channel" },
+  { name: "Pull out the details", note: "product, qty, customer, urgency" },
+  { name: "Check inventory", note: "in stock vs. special order" },
+  { name: "Check the money", note: "AR aging, credit, risk" },
+  { name: "Find suppliers", note: "when special order is needed" },
+  { name: "Write the reply", note: "quote, follow-up, supplier RFQ" },
+  { name: "Ask the right person", note: "Sales Assistant, AR, or Purchasing" },
 ];
 
 const SURFACES = [
-  { icon: "✉", name: "Gmail sidecar", note: "drafts appear in the thread" },
-  { icon: "💬", name: "Chat approvals", note: "AR / Purchasing one-click" },
-  { icon: "▤", name: "AppSheet case file", note: "lives next to Sheets" },
-  { icon: "📊", name: "Looker dashboard", note: "Carol's numbers, same login" },
-  { icon: "↩", name: "Procurement Tool write-back", note: "stages + audit log sync" },
-  { icon: "👥", name: "Customer & supplier", note: "humans-approved emails out" },
+  { icon: "✉", name: "Reply drafts in your inbox", note: "ready to send when you click" },
+  { icon: "✓", name: "Approval buttons", note: "one click per decision" },
+  { icon: "▤", name: "Procurement record", note: "case file, audit trail" },
+  { icon: "📊", name: "Your numbers, daily", note: "cycle time, $ saved, $ at risk" },
+  { icon: "↑", name: "PDFs out", note: "quotes, POs, supplier orders" },
+  { icon: "👥", name: "Customers & suppliers", note: "only after a human approves" },
 ];
 
 export function SystemDiagram() {
@@ -39,38 +39,38 @@ export function SystemDiagram() {
             Where this lives in your business
           </div>
           <div className="text-[11px] text-[var(--brand-muted)]">
-            AI sits between your data and your team. Nothing replaces, everything connects.
+            AI sits between your information and your team. Nothing gets replaced — everything gets connected.
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-5 items-stretch">
           <Column
-            title="What AI reads from"
-            label="Data sources"
+            title="What comes in"
+            label="The information"
             colSpan={4}
             tone="info"
             items={SOURCES.map((s) => ({ label: s.name, sub: s.note, icon: s.icon }))}
           />
           <ArrowCol direction="→" />
           <Column
-            title="AI orchestration layer"
-            label="Procurement brain"
+            title="What AI does"
+            label="The work"
             colSpan={3}
             tone="brand"
             items={STEPS.map((s) => ({ label: s.name, sub: s.note }))}
           />
           <ArrowCol direction="→" />
           <Column
-            title="Where humans interact"
-            label="Output surfaces"
+            title="What you see"
+            label="The results"
             colSpan={4}
             tone="ok"
             items={SURFACES.map((s) => ({ label: s.name, sub: s.note, icon: s.icon }))}
           />
         </div>
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
-          <Note color="info" body="Reads through APIs and connectors. Your data stays in your tenant." />
-          <Note color="brand" body="One brain, one case file, one audit log. AI orchestrates across all stages." />
-          <Note color="ok" body="Humans approve every customer- or supplier-facing move." />
+          <Note color="info" body="The information stays where it already is — your inbox, your records, your portal. AI reads it." />
+          <Note color="brand" body="One brain, one case file, one audit trail. Same MWI-0703-02 process — every step done faster." />
+          <Note color="ok" body="People approve every reply, every quote, every order. Nothing goes out without a human green button." />
         </div>
       </div>
     </Card>

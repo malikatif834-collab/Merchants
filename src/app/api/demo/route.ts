@@ -8,40 +8,108 @@ export const dynamic = "force-dynamic";
 // task. Bump to "claude-opus-4-7" + thinking={type:"adaptive"} for production.
 const MODEL = "claude-sonnet-4-6";
 
+const MAX_PDF_BYTES = 3_000_000; // ~3MB raw → ~4MB base64; stays under Vercel limits
+
+interface DemoRequest {
+  input?: unknown;
+  clientKey?: unknown;
+  pdfBase64?: unknown;
+  pdfName?: unknown;
+  pdfDirection?: unknown;
+}
+
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  let body: DemoRequest = {};
+  try {
+    body = (await req.json()) as DemoRequest;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const input = typeof body.input === "string" ? body.input.trim() : "";
+  const clientKey =
+    typeof body.clientKey === "string" && body.clientKey.startsWith("sk-")
+      ? body.clientKey
+      : "";
+  const pdfBase64 =
+    typeof body.pdfBase64 === "string" ? body.pdfBase64.trim() : "";
+  const pdfName =
+    typeof body.pdfName === "string" ? body.pdfName.trim() : "uploaded.pdf";
+  const pdfDirection =
+    body.pdfDirection === "supplier" ? "supplier" : "customer";
+
+  // Need either text input or a PDF.
+  if (!input && !pdfBase64) {
+    return new Response(
+      JSON.stringify({ error: "Missing 'input' field or 'pdfBase64' field." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  if (input.length > 8000) {
+    return new Response(
+      JSON.stringify({ error: "Text input too long (max 8000 characters)." }),
+      { status: 413, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  if (pdfBase64) {
+    const approxBytes = Math.floor((pdfBase64.length * 3) / 4);
+    if (approxBytes > MAX_PDF_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: `PDF too large (${(approxBytes / 1_000_000).toFixed(1)} MB). Max 3 MB.`,
+        }),
+        { status: 413, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
+  // Resolve the API key. Prefer server-side env (production path); fall back
+  // to a client-supplied key for the demo workflow when the env var path
+  // can't be configured in time.
+  const apiKey = process.env.ANTHROPIC_API_KEY || clientKey;
+  if (!apiKey) {
     return new Response(
       JSON.stringify({
         error:
-          "ANTHROPIC_API_KEY is not configured. Set it in your Vercel project settings → Environment Variables, then redeploy.",
+          "No API key available. Either configure ANTHROPIC_API_KEY in Vercel, or paste your key into the panel (it stays in your browser).",
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  let input = "";
-  try {
-    const body = (await req.json()) as { input?: unknown };
-    if (typeof body.input === "string") input = body.input.trim();
-  } catch {
-    /* fall through to validation below */
-  }
+  const client = new Anthropic({ apiKey });
+  const encoder = new TextEncoder();
 
-  if (!input) {
-    return new Response(JSON.stringify({ error: "Missing 'input' field." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
+  // Build the user message — may include a PDF document block.
+  const userContent: Anthropic.Messages.ContentBlockParam[] = [];
+  if (pdfBase64) {
+    userContent.push({
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: "application/pdf",
+        data: pdfBase64,
+      },
     });
   }
-  if (input.length > 8000) {
-    return new Response(
-      JSON.stringify({ error: "Input too long (max 8000 characters)." }),
-      { status: 413, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const client = new Anthropic();
-  const encoder = new TextEncoder();
+  const directionHint =
+    pdfDirection === "supplier"
+      ? `(This PDF is an INBOUND SUPPLIER QUOTE — parse it as a vendor response during the sourcing step of MWI-0703-02.)`
+      : pdfBase64
+        ? `(This PDF is an INBOUND CUSTOMER REQUEST — RFQ, PO, or spec sheet — that triggers the procurement workflow.)`
+        : "";
+  const textPart = [
+    `Analyze this inbound for Merchants Paper. Produce the five-section structured analysis exactly as defined in your instructions.`,
+    pdfName && pdfBase64 ? `PDF attached: ${pdfName}` : "",
+    directionHint,
+    input ? `Additional notes / message:\n---\n${input}\n---` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  userContent.push({ type: "text", text: textPart });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -58,12 +126,7 @@ export async function POST(req: Request) {
               cache_control: { type: "ephemeral" },
             },
           ],
-          messages: [
-            {
-              role: "user",
-              content: `Analyze this inbound from a Merchants customer or rep. Produce the five-section structured analysis as defined.\n\n---\n${input}\n---`,
-            },
-          ],
+          messages: [{ role: "user", content: userContent }],
         });
 
         for await (const event of liveStream) {

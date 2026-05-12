@@ -49,7 +49,7 @@ Notes: Same list as last quarter, roughly.`,
   },
   {
     key: "phone",
-    label: "Voicemail transcript",
+    label: "Voicemail",
     channel: "Phone · Riverbend Suites",
     text: `Voicemail received Friday 4:42 PM. Caller: Jenna Albuquerque, Riverbend Suites & Conference. Duration: 1:32.
 
@@ -71,13 +71,14 @@ quote this week pls"`,
   },
   {
     key: "blank",
-    label: "Blank — paste your own",
+    label: "Paste your own",
     channel: "Anything",
     text: "",
   },
 ];
 
 type Status = "idle" | "thinking" | "streaming" | "done" | "error";
+type PdfDirection = "customer" | "supplier";
 
 const STEPS = [
   { key: "CLASSIFY", label: "Classifying channel & intent" },
@@ -87,13 +88,42 @@ const STEPS = [
   { key: "RECOMMENDATION", label: "Drafting recommendation" },
 ];
 
+const STORAGE_KEY = "merchants_ai_demo_key";
+
 export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
   const [presetKey, setPresetKey] = useState<string>("email");
   const [input, setInput] = useState<string>(PRESETS[0].text);
   const [status, setStatus] = useState<Status>("idle");
   const [raw, setRaw] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  // PDF state
+  const [pdfBase64, setPdfBase64] = useState<string>("");
+  const [pdfName, setPdfName] = useState<string>("");
+  const [pdfSizeKB, setPdfSizeKB] = useState<number>(0);
+  const [pdfDirection, setPdfDirection] = useState<PdfDirection>("customer");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // API key state — stored in localStorage, sent in request body
+  const [clientKey, setClientKey] = useState<string>("");
+  const [keyMasked, setKeyMasked] = useState<boolean>(true);
+  const [showKeyPanel, setShowKeyPanel] = useState<boolean>(false);
+
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) setClientKey(saved);
+  }, []);
+
+  const saveKey = (k: string) => {
+    setClientKey(k);
+    if (typeof window !== "undefined") {
+      if (k) localStorage.setItem(STORAGE_KEY, k);
+      else localStorage.removeItem(STORAGE_KEY);
+    }
+  };
 
   const sections = useMemo(() => parseSections(raw), [raw]);
 
@@ -118,8 +148,38 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
     setStatus("idle");
   };
 
+  const onPdfPick = async (file: File | null) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setError("Only PDF files are supported.");
+      return;
+    }
+    if (file.size > 3_000_000) {
+      setError(
+        `PDF is ${(file.size / 1_000_000).toFixed(1)} MB — maximum 3 MB for the live demo.`
+      );
+      return;
+    }
+    setError(null);
+    const buf = await file.arrayBuffer();
+    const base64 = arrayBufferToBase64(buf);
+    setPdfBase64(base64);
+    setPdfName(file.name);
+    setPdfSizeKB(Math.round(file.size / 1024));
+    setRaw("");
+    setStatus("idle");
+  };
+
+  const clearPdf = () => {
+    setPdfBase64("");
+    setPdfName("");
+    setPdfSizeKB(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const run = async () => {
-    if (!input.trim() || status === "streaming" || status === "thinking") return;
+    if (status === "streaming" || status === "thinking") return;
+    if (!input.trim() && !pdfBase64) return;
     setRaw("");
     setError(null);
     setStatus("thinking");
@@ -131,7 +191,13 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
       const res = await fetch("/api/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({
+          input,
+          clientKey: clientKey || undefined,
+          pdfBase64: pdfBase64 || undefined,
+          pdfName: pdfName || undefined,
+          pdfDirection: pdfBase64 ? pdfDirection : undefined,
+        }),
         signal: ac.signal,
       });
 
@@ -179,6 +245,8 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
     setStatus("idle");
   };
 
+  const busy = status === "streaming" || status === "thinking";
+
   return (
     <Card className="border-[var(--brand-orange)]/40">
       <div className="p-5 border-b border-[var(--brand-line)] flex items-start gap-3 flex-wrap">
@@ -187,23 +255,45 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
         </div>
         <div className="flex-1 min-w-[200px]">
           <div className="text-[15px] font-semibold text-white tracking-tight">
-            Run the AI on a real inbound, live
+            Run the AI on a real inbound — text or PDF, customer or supplier
           </div>
           <div className="text-[12px] text-[var(--brand-muted)] mt-0.5">
-            Pick a channel or paste anything. Watch the model classify, extract, check, score, and draft — in real time.
+            Pick a channel, paste anything, or drop a PDF. Watch the model classify, extract, check, score, and draft — in real time.
           </div>
         </div>
-        <Pill tone="brand">claude-sonnet-4-6</Pill>
+        <div className="flex items-center gap-2">
+          <Pill tone="brand">claude-sonnet-4-6</Pill>
+          <button
+            type="button"
+            onClick={() => setShowKeyPanel((s) => !s)}
+            className="text-[11px] uppercase tracking-wider text-[var(--brand-muted)] hover:text-white px-2 py-1 rounded-md border border-[var(--brand-line)]"
+            title="API key settings"
+          >
+            ⚙ Key
+          </button>
+        </div>
       </div>
 
+      {showKeyPanel && (
+        <KeyPanel
+          clientKey={clientKey}
+          setClientKey={saveKey}
+          masked={keyMasked}
+          setMasked={setKeyMasked}
+          onClose={() => setShowKeyPanel(false)}
+        />
+      )}
+
       <div className="p-5 space-y-4">
+        <FlowDirectionStrip pdfBase64={pdfBase64} pdfDirection={pdfDirection} />
+
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
             <button
               key={p.key}
               type="button"
               onClick={() => onPresetChange(p.key)}
-              disabled={status === "streaming" || status === "thinking"}
+              disabled={busy}
               className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors disabled:opacity-50 ${
                 presetKey === p.key
                   ? "bg-[var(--brand-orange)] text-[var(--brand-ink)] border-[var(--brand-orange)]"
@@ -219,19 +309,30 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={status === "streaming" || status === "thinking"}
-            rows={compact ? 6 : 9}
+            disabled={busy}
+            rows={compact ? 6 : 8}
             spellCheck={false}
             className="w-full font-mono bg-[var(--brand-ink)] border border-[var(--brand-line)] rounded-md p-3 text-[12.5px] text-white/95 placeholder:text-[var(--brand-muted)] disabled:opacity-60 resize-y"
-            placeholder="Paste an email, a voicemail transcript, a portal submission, a rep's note — anything."
+            placeholder="Paste an email, a voicemail transcript, a portal submission, a rep's note — or leave blank and just attach a PDF below."
           />
           <div className="text-[10px] text-[var(--brand-muted)] mt-1 text-right tabular-nums">
             {input.length} / 8000 characters
           </div>
         </div>
 
+        <PdfUploader
+          pdfName={pdfName}
+          pdfSizeKB={pdfSizeKB}
+          pdfDirection={pdfDirection}
+          setPdfDirection={setPdfDirection}
+          onPick={onPdfPick}
+          onClear={clearPdf}
+          fileInputRef={fileInputRef}
+          disabled={busy}
+        />
+
         <div className="flex items-center gap-3 flex-wrap">
-          {status === "streaming" || status === "thinking" ? (
+          {busy ? (
             <button
               type="button"
               onClick={cancel}
@@ -243,7 +344,7 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
             <button
               type="button"
               onClick={run}
-              disabled={!input.trim()}
+              disabled={!input.trim() && !pdfBase64}
               className="inline-flex items-center gap-2 bg-[var(--brand-orange)] hover:bg-[var(--brand-orange-600)] text-[var(--brand-ink)] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ▶ Run AI live
@@ -256,7 +357,7 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
           <div className="rounded-md border border-[var(--brand-red)]/40 bg-[var(--brand-red)]/10 p-3 text-[12.5px] text-[var(--brand-red)]">
             <span className="font-semibold">AI unavailable.</span> {error}
             <div className="text-[var(--brand-muted)] mt-1">
-              Tip: set <code className="font-mono text-white/80">ANTHROPIC_API_KEY</code> in Vercel project settings → Environment Variables, then redeploy.
+              Tip: click <span className="text-white">⚙ Key</span> above to paste an Anthropic API key — it stays in your browser, never in the repo.
             </div>
           </div>
         )}
@@ -270,6 +371,208 @@ export function LiveAIPanel({ compact = false }: { compact?: boolean }) {
         )}
       </div>
     </Card>
+  );
+}
+
+function KeyPanel({
+  clientKey,
+  setClientKey,
+  masked,
+  setMasked,
+  onClose,
+}: {
+  clientKey: string;
+  setClientKey: (k: string) => void;
+  masked: boolean;
+  setMasked: (b: boolean) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(clientKey);
+  const has = !!clientKey;
+  return (
+    <div className="border-b border-[var(--brand-line)] bg-[var(--brand-charcoal-2)] p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
+          Anthropic API key (browser-only)
+        </span>
+        {has && <Pill tone="ok">key set</Pill>}
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto text-[11px] text-[var(--brand-muted)] hover:text-white"
+        >
+          close
+        </button>
+      </div>
+      <div className="text-[11.5px] text-[var(--brand-muted)] leading-relaxed">
+        Your key is stored in this browser only (localStorage). It travels in the request body to <code className="text-white/80">/api/demo</code> over HTTPS and is used to call Anthropic. It is never committed to the repo, never logged, never visible to anyone else. Clear it any time.
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type={masked ? "password" : "text"}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="sk-ant-api03-..."
+          className="flex-1 bg-[var(--brand-ink)] border border-[var(--brand-line)] rounded-md px-3 py-2 text-[12.5px] text-white font-mono"
+          spellCheck={false}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          onClick={() => setMasked(!masked)}
+          className="text-[11px] text-[var(--brand-muted)] hover:text-white px-2"
+        >
+          {masked ? "show" : "hide"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setClientKey(draft.trim())}
+          className="bg-[var(--brand-green)] text-[var(--brand-ink)] font-semibold px-3 py-1.5 rounded-md text-[12px]"
+        >
+          Save
+        </button>
+        {has && (
+          <button
+            type="button"
+            onClick={() => {
+              setClientKey("");
+              setDraft("");
+            }}
+            className="border border-[var(--brand-red)]/40 text-[var(--brand-red)] px-3 py-1.5 rounded-md text-[12px]"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PdfUploader({
+  pdfName,
+  pdfSizeKB,
+  pdfDirection,
+  setPdfDirection,
+  onPick,
+  onClear,
+  fileInputRef,
+  disabled,
+}: {
+  pdfName: string;
+  pdfSizeKB: number;
+  pdfDirection: PdfDirection;
+  setPdfDirection: (d: PdfDirection) => void;
+  onPick: (f: File | null) => void;
+  onClear: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  disabled: boolean;
+}) {
+  const has = !!pdfName;
+  return (
+    <div className="rounded-md border border-dashed border-[var(--brand-line)] bg-[var(--brand-ink)]/40 p-3">
+      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
+            ▤ Attach a PDF (optional)
+          </span>
+          <span className="text-[11px] text-[var(--brand-muted)]">
+            Customer RFQ, PO, spec sheet — or a supplier&apos;s returned quote
+          </span>
+        </div>
+        <div className="inline-flex rounded-md border border-[var(--brand-line)] bg-[var(--brand-charcoal)] p-0.5">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setPdfDirection("customer")}
+            className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-colors ${
+              pdfDirection === "customer"
+                ? "bg-[var(--brand-orange)] text-[var(--brand-ink)]"
+                : "text-[var(--brand-muted)] hover:text-white"
+            }`}
+          >
+            ↓ From customer
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setPdfDirection("supplier")}
+            className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-colors ${
+              pdfDirection === "supplier"
+                ? "bg-[var(--brand-orange)] text-[var(--brand-ink)]"
+                : "text-[var(--brand-muted)] hover:text-white"
+            }`}
+          >
+            ↑ From supplier
+          </button>
+        </div>
+      </div>
+      {has ? (
+        <div className="flex items-center gap-3 bg-[var(--brand-charcoal-2)] border border-[var(--brand-line)]/60 rounded-md p-2.5">
+          <div className="h-8 w-8 rounded-md bg-[var(--brand-red)]/20 text-[var(--brand-red)] flex items-center justify-center text-[11px] font-bold shrink-0">
+            PDF
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12.5px] text-white font-medium truncate">{pdfName}</div>
+            <div className="text-[10.5px] text-[var(--brand-muted)]">
+              {pdfSizeKB} KB · {pdfDirection === "customer" ? "treated as inbound from customer" : "treated as supplier quote response"}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={disabled}
+            className="text-[11px] text-[var(--brand-muted)] hover:text-[var(--brand-red)]"
+          >
+            remove
+          </button>
+        </div>
+      ) : (
+        <label
+          className={`flex items-center justify-center gap-2 rounded-md border border-[var(--brand-line)]/60 bg-[var(--brand-charcoal-2)]/60 hover:bg-[var(--brand-charcoal-2)] cursor-pointer text-[12px] text-[var(--brand-muted)] py-3 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            disabled={disabled}
+            className="sr-only"
+            onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+          />
+          📎 Choose a PDF (max 3 MB)
+        </label>
+      )}
+    </div>
+  );
+}
+
+function FlowDirectionStrip({
+  pdfBase64,
+  pdfDirection,
+}: {
+  pdfBase64: string;
+  pdfDirection: PdfDirection;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--brand-line)] bg-[var(--brand-charcoal-2)] px-3 py-2 flex items-center gap-2 text-[11.5px]">
+      <span className="text-[10px] uppercase tracking-wider text-[var(--brand-muted)] font-semibold">
+        Flow
+      </span>
+      {pdfBase64 ? (
+        pdfDirection === "customer" ? (
+          <span className="text-white">
+            <span className="text-[var(--brand-orange)]">Customer PDF</span> → Merchants procurement workflow → human approves → quote out to customer
+          </span>
+        ) : (
+          <span className="text-white">
+            <span className="text-[var(--brand-orange)]">Supplier PDF (quote return)</span> → AI normalizes into comparison → human approves → order to supplier
+          </span>
+        )
+      ) : (
+        <span className="text-white">
+          Any inbound (email · portal · phone · walk-up) → AI extracts → human approves → quote out
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -468,7 +771,7 @@ function RecommendationBody({ text }: { text: string }) {
       {draft && (
         <div className="rounded-md border border-[var(--brand-orange)]/40 bg-[var(--brand-orange)]/5 overflow-hidden">
           <div className="px-3 py-2 border-b border-[var(--brand-orange)]/30 text-[10px] uppercase tracking-wider text-[var(--brand-orange)] font-semibold">
-            ✉ Draft customer reply (awaiting human approval)
+            ✉ Draft reply (awaiting human approval)
           </div>
           <pre className="p-3 text-[13px] text-white/95 whitespace-pre-wrap font-sans leading-relaxed">
 {draft}
@@ -509,4 +812,21 @@ function parseSections(raw: string): Record<string, string> {
     out[current.key] = body;
   }
   return out;
+}
+
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(
+      null,
+      Array.from(bytes.subarray(i, i + chunkSize))
+    );
+  }
+  if (typeof window !== "undefined" && typeof window.btoa === "function") {
+    return window.btoa(binary);
+  }
+  // Fallback for non-browser contexts (shouldn't happen — this is a client component)
+  return Buffer.from(binary, "binary").toString("base64");
 }

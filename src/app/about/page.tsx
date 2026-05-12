@@ -8,61 +8,129 @@ export default function AboutPage() {
       <div>
         <Pill tone="brand">How this works</Pill>
         <h1 className="mt-3 text-[34px] font-semibold text-white tracking-tight leading-tight">
-          The same workflow you signed off on,<br />
-          <span className="text-[var(--brand-orange)]">supervised by AI at every step.</span>
+          Same process you already use,<br />
+          <span className="text-[var(--brand-orange)]">finished in a fraction of the time.</span>
         </h1>
-        <p className="mt-4 text-[14.5px] text-[var(--brand-muted)] max-w-[720px]">
-          This prototype maps directly onto your existing Work Instruction
-          MWI-0703-02 for Product Procurement. Nothing in the process changes.
-          What changes is how much of the cognitive work your team does by hand,
-          versus what AI prepares for their approval.
+        <p className="mt-4 text-[15px] text-[var(--brand-muted)] max-w-[720px]">
+          This sits alongside your existing procurement workflow (MWI-0703-02). Nothing about
+          who does what changes. What changes is that AI reads everything that comes in,
+          drafts the boring parts, and shows it to the right person to approve.
+          More deals closed. Less time chasing paperwork.
         </p>
       </div>
 
       <SystemDiagram />
 
       <Card>
-        <CardHeader title="The principle" subtitle="Recommend → approve → execute" />
-        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Tile
-            num="1"
-            title="AI recommends"
-            body="Drafts the checklist, the email, the supplier shortlist, the quote, the AR brief. Always with reasoning and a confidence score."
+        <CardHeader title="The money picture" subtitle="What changes for Merchants once this is on" />
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NumberTile
+            value="6.2d → 1.8d"
+            label="Special-order cycle time"
+            body="From the moment a customer asks, to the moment they get a quote. Faster quote, more wins."
           />
-          <Tile
-            num="2"
-            title="Human approves"
-            body="Your team sees the recommendation in context and clicks Approve, Edit, or Reject. Nothing reaches a customer or supplier without it."
+          <NumberTile
+            value="$34K"
+            label="Margin recovered every month"
+            body="AI catches requests that look like 'special orders' but are actually in stock. No supplier markup needed."
           />
-          <Tile
-            num="3"
-            title="AI executes"
-            body="Once approved, AI sends the email, updates the case file, advances the workflow stage. Then logs it to the audit trail."
+          <NumberTile
+            value="$127K"
+            label="AR exposure caught before it became a problem"
+            body="Before sales spends hours quoting a customer with stale receivables, AI flags it."
+          />
+          <NumberTile
+            value="31.5h / week"
+            label="Hours your team gets back"
+            body="Less re-keying, less chasing, less back-and-forth. More selling."
           />
         </div>
       </Card>
 
       <Card>
         <CardHeader
-          title="What the prototype covers"
-          subtitle="Four real scenarios from your workflow, fully clickable"
+          title="The principle"
+          subtitle="AI drafts. People decide. AI then sends what was approved."
+        />
+        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Tile
+            num="1"
+            title="AI reads & drafts"
+            body="Email, voicemail, walk-up note, PDF, portal form — AI pulls out what matters and writes a draft response."
+          />
+          <Tile
+            num="2"
+            title="A person approves"
+            body="Sales Assistant, AR, or Purchasing clicks Approve, Edit, or Reject. Nothing leaves Merchants without that click."
+          />
+          <Tile
+            num="3"
+            title="AI does the busywork"
+            body="Once approved, AI sends the email, files the case, updates the audit trail, and moves on to the next thing."
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="What you can put into it"
+          subtitle="Both directions — customers in, suppliers in. Quotes & orders out."
+        />
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <DirectionTile
+            arrow="↓"
+            tone="in"
+            title="Coming IN"
+            items={[
+              "Customer emails asking for quotes",
+              "Customer-uploaded PDFs (RFQs, POs, specs)",
+              "Voicemails from customers",
+              "A rep's notes from a customer visit",
+              "Portal form submissions",
+              "Supplier quotes coming back as PDFs",
+              "Supplier lead-time updates",
+            ]}
+          />
+          <DirectionTile
+            arrow="↑"
+            tone="out"
+            title="Going OUT (after a human approves)"
+            items={[
+              "Quote replies to customers",
+              "Follow-ups on stalled quotes",
+              "RFQs sent to suppliers",
+              "Special Order Confirmations to customers",
+              "POs to suppliers",
+              "Internal notes to AR, Purchasing, Sales",
+            ]}
+          />
+        </div>
+        <div className="px-6 pb-5 text-[12.5px] text-[var(--brand-muted)] italic">
+          Try it now — go to <Link href="/demo" className="text-[var(--brand-orange)] hover:underline">Run AI live</Link> and drop in a PDF from a customer or a supplier. Watch it process either direction.
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="The four scenarios this prototype covers"
+          subtitle="Each one is a fully clickable case file"
         />
         <div className="divide-y divide-[var(--brand-line)]/60">
           <Row
             badge="Should have been stock"
             title="Customer asks for a special order — AI realizes it isn't"
-            body="The first decision in your MWI-0703-02 workflow is 'can we fulfill from stock?' This is where AI semantically matches the request to your catalog and recovers margin lost to needless special-order markup."
+            body="The first decision in your MWI-0703-02 workflow is 'can we fulfill from stock?' AI checks the catalog before anyone starts working — recovers margin lost to needless special-order markup."
             link="/case/case-001"
           />
           <Row
             badge="Credit risk caught early"
             title="$45K of effort prevented before it starts"
-            body="When AR has cause for concern, AI prepares the brief — aging buckets, NSF history, YoY trend, and three concrete paths — so the Director of Sales call takes minutes, not days."
+            body="When AR has cause for concern, AI prepares the brief — aging buckets, NSF history, year-over-year trend, and three concrete paths — so the Director of Sales call takes minutes, not days."
             link="/case/case-002"
           />
           <Row
             badge="Complex sourcing"
-            title="Three suppliers, one comparable table, ready for a human to pick"
+            title="Three supplier quotes, one comparison table — ready for a human to pick"
             body="For genuine special orders, AI shortlists suppliers from your history, drafts the RFQs, parses returned quote PDFs, and normalizes them into a single comparison view."
             link="/case/case-003"
           />
@@ -75,44 +143,48 @@ export default function AboutPage() {
         </div>
       </Card>
 
-      <Card className="border-[var(--brand-green)]/30">
+      <Card>
         <CardHeader
-          title="Phase 2 — embedded in your Google Workspace"
-          subtitle="Once value is proven, this lives where your team already works"
-          right={<Pill tone="ok">CleanBeyondGreen path</Pill>}
+          title="Trust grows over time"
+          subtitle="AI starts as an assistant. It only earns more autonomy by proving itself."
         />
-        <div className="p-6 space-y-3 text-[13.5px]">
-          <p className="text-[var(--brand-muted)] leading-relaxed">
-            You&apos;re already paying for Google Enterprise Plus. Phase 2 surfaces this
-            AI exactly where your team works today, not in a separate tool:
-          </p>
-          <ul className="space-y-2 text-[var(--brand-muted)]">
-            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Gmail sidecar</span> for reps and Sales Assistants — AI drafts replies and checklist entries in the message thread itself.</span></li>
-            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">AppSheet</span> for the procurement case file and audit trail — no separate database to maintain.</span></li>
-            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Google Chat space</span> for AR and Purchasing approvals — buttons in the message, no logins.</span></li>
-            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Vertex AI / Gemini</span> as the brain — your data stays in your tenant.</span></li>
-            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Looker Studio</span> for the executive dashboard — exactly the numbers Carol sees here, on the same login.</span></li>
-          </ul>
-          <p className="text-[var(--brand-muted)] leading-relaxed mt-3">
-            The prototype proves the workflow. Phase 2 plants it in the soil you already own.
-          </p>
+        <div className="p-6">
+          <ol className="space-y-3 text-[13.5px]">
+            <Step n="Today" body="AI suggests, drafts, scores. Every reply, every quote, every order requires a person to click Approve. You see every reason, every confidence score, every step." tone="brand" />
+            <Step n="In a few months" body="Once you trust certain moves (sending RFQs to your usual suppliers, following up on a stalled quote), you flip them to auto. Easy to reverse. Easy to undo." tone="info" />
+            <Step n="Later" body="More autonomy on the things that are working. The risky stuff — pricing, big customers, contract terms — still asks. You set the thresholds." tone="ok" />
+          </ol>
         </div>
       </Card>
 
-      <Card>
-        <CardHeader title="Trust ladder" subtitle="When does AI graduate from assistant to autonomous?" />
-        <div className="p-6">
-          <ol className="space-y-3 text-[13.5px]">
-            <Step n="Now" body="AI recommends. Every action requires a human green button. You see every reason, every confidence score, every step." tone="brand" />
-            <Step n="Next" body="Low-risk moves (RFQ sending, stalled-deal follow-ups, internal alerts) flip to auto-execute. Easy to reverse. High value, low downside." tone="info" />
-            <Step n="Later" body="Once you trust specific moves at specific confidence levels, auto-execute expands. You configure the thresholds. Anything below threshold still asks." tone="ok" />
-          </ol>
+      <Card className="border-[var(--brand-green)]/30">
+        <CardHeader
+          title="Phase 2 — bringing this into your existing tools"
+          subtitle="You're already paying for Google. This lives inside the tools your team already uses."
+          right={<Pill tone="ok">No new logins</Pill>}
+        />
+        <div className="p-6 space-y-3 text-[13.5px]">
+          <p className="text-[var(--brand-muted)] leading-relaxed">
+            Right now this is a prototype on its own URL. The plan for Phase 2 is to move it
+            inside the Google tools your team already opens every morning — no new software
+            to learn, no new logins:
+          </p>
+          <ul className="space-y-2 text-[var(--brand-muted)]">
+            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">In your team&apos;s Gmail.</span> When a customer email arrives, AI&apos;s draft reply appears in the message itself. The rep edits it if they want, then hits Send.</span></li>
+            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">In a shared Sheet you already maintain.</span> The case file for each special order — what was extracted, who approved what, when — lives in a familiar spreadsheet, not a new system.</span></li>
+            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">A message in Google Chat for approvals.</span> AR or Purchasing gets a Chat message: &ldquo;Approve this credit hold?&rdquo; with the AI&apos;s reasoning underneath. They click Approve or Reject right there.</span></li>
+            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Your daily numbers report.</span> A simple page you bookmark — cycle time, hours saved, money recovered, deals at risk. Same numbers you see here, but on your existing Google login.</span></li>
+            <li className="flex gap-2"><span className="text-[var(--brand-green)]">▸</span><span><span className="text-white font-medium">Your data stays yours.</span> Everything runs inside your Google account. Nothing about your customers or AR ledger ever leaves your tenant.</span></li>
+          </ul>
+          <p className="text-[var(--brand-muted)] leading-relaxed mt-3">
+            The prototype proves it works. Phase 2 plants it in the tools you already own.
+          </p>
         </div>
       </Card>
 
       <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
         <div className="text-[12px] text-[var(--brand-muted)]">
-          Prototype for Merchants Paper Company Limited · {new Date().toLocaleDateString("en-CA")}
+          Prototype for Merchants Paper Company Limited
         </div>
         <Link
           href="/"
@@ -133,6 +205,67 @@ function Tile({ num, title, body }: { num: string; title: string; body: string }
       </div>
       <div className="text-[15px] font-semibold text-white mb-1">{title}</div>
       <p className="text-[12.5px] text-[var(--brand-muted)] leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function NumberTile({
+  value,
+  label,
+  body,
+}: {
+  value: string;
+  label: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--brand-line)] bg-[var(--brand-charcoal-2)] p-5">
+      <div className="text-[28px] font-semibold text-[var(--brand-orange)] tabular-nums leading-none">
+        {value}
+      </div>
+      <div className="text-[12px] uppercase tracking-wider text-white/85 font-medium mt-1.5 mb-1">
+        {label}
+      </div>
+      <p className="text-[12.5px] text-[var(--brand-muted)] leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function DirectionTile({
+  arrow,
+  tone,
+  title,
+  items,
+}: {
+  arrow: string;
+  tone: "in" | "out";
+  title: string;
+  items: string[];
+}) {
+  const accent =
+    tone === "in"
+      ? "border-[var(--brand-orange)]/40 bg-[var(--brand-orange)]/5"
+      : "border-[var(--brand-green)]/40 bg-[var(--brand-green)]/5";
+  const arrowColor = tone === "in" ? "text-[var(--brand-orange)]" : "text-[var(--brand-green)]";
+  return (
+    <div className={`rounded-lg border ${accent} p-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`text-[20px] ${arrowColor}`}>{arrow}</span>
+        <span className="text-[11px] uppercase tracking-wider text-white font-semibold">
+          {title}
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {items.map((it) => (
+          <li
+            key={it}
+            className="flex items-start gap-2 text-[12.5px] text-white/90"
+          >
+            <span className={`mt-1 h-1 w-1 rounded-full shrink-0 ${tone === "in" ? "bg-[var(--brand-orange)]" : "bg-[var(--brand-green)]"}`} />
+            <span>{it}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
